@@ -10,7 +10,6 @@ from datetime import datetime
 
 from app.db.base import Base
 
-
 class Route(Base):
     __tablename__ = "routes"
 

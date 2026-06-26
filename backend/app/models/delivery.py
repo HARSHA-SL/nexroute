@@ -1,86 +1,35 @@
-from sqlalchemy import (
-    String,
-    Float,
-    Integer,
-    DateTime,
-    ForeignKey
-)
-from sqlalchemy.orm import Mapped, mapped_column
-from datetime import datetime
-
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
+from sqlalchemy.sql import func
 from app.db.base import Base
-
 
 class Delivery(Base):
     __tablename__ = "deliveries"
 
-    id: Mapped[int] = mapped_column(
-        primary_key=True,
-        index=True
-    )
+    id = Column(Integer, primary_key=True, index=True)
 
-    warehouse_id: Mapped[int] = mapped_column(
-        ForeignKey("warehouses.id"),
-        nullable=False
-    )
+    customer_name = Column(String(100), nullable=False)
+    customer_phone = Column(String(20))
 
-    customer_name: Mapped[str] = mapped_column(
-        String(100),
-        nullable=False
-    )
+    address = Column(String, nullable=False)
 
-    customer_phone: Mapped[str] = mapped_column(
-        String(20),
-        nullable=False
-    )
+    latitude = Column(Float, nullable=False)
+    longitude = Column(Float, nullable=False)
 
-    address: Mapped[str] = mapped_column(
-        String(255),
-        nullable=False
-    )
+    weight = Column(Float, nullable=False)
+    volume = Column(Float, default=0)
 
-    latitude: Mapped[float] = mapped_column(
-        Float,
-        nullable=False
-    )
+    priority = Column(String(20), default="MEDIUM")
 
-    longitude: Mapped[float] = mapped_column(
-        Float,
-        nullable=False
-    )
+    status = Column(String(30), default="PENDING")
 
-    weight_kg: Mapped[int] = mapped_column(
-        Integer,
-        nullable=False
-    )
+    delivery_window_start = Column(DateTime, nullable=True)
+    delivery_window_end = Column(DateTime, nullable=True)
 
-    priority: Mapped[str] = mapped_column(
-        String(20),
-        default="MEDIUM"
-    )
+    assigned_driver_id = Column(Integer, ForeignKey("drivers.id"), nullable=True)
+    assigned_vehicle_id = Column(Integer, ForeignKey("vehicles.id"), nullable=True)
 
-    status: Mapped[str] = mapped_column(
-        String(20),
-        default="PENDING"
-    )
+    route_order = Column(Integer, nullable=True)
 
-    time_window_start: Mapped[datetime] = mapped_column(
-        DateTime,
-        nullable=False
-    )
+    estimated_arrival = Column(DateTime, nullable=True)
 
-    time_window_end: Mapped[datetime] = mapped_column(
-        DateTime,
-        nullable=False
-    )
-
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        default=datetime.utcnow
-    )
-
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow
-    )
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

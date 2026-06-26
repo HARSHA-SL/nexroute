@@ -1,4 +1,6 @@
 from pydantic_settings import BaseSettings
+WAREHOUSE_LATITUDE: float = 12.9716
+WAREHOUSE_LONGITUDE: float = 77.5946
 
 
 class Settings(BaseSettings):

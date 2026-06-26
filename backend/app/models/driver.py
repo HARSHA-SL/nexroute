@@ -1,47 +1,25 @@
-from sqlalchemy import String, DateTime
-from sqlalchemy.orm import Mapped, mapped_column
-from datetime import datetime
-
+from sqlalchemy import Column, Integer, String, Float, DateTime
 from app.db.base import Base
-
 
 class Driver(Base):
     __tablename__ = "drivers"
 
-    id: Mapped[int] = mapped_column(
-        primary_key=True,
-        index=True
-    )
+    id = Column(Integer, primary_key=True)
 
-    name: Mapped[str] = mapped_column(
-        String(100),
-        nullable=False
-    )
+    name = Column(String(100))
 
-    phone: Mapped[str] = mapped_column(
-        String(20),
-        unique=True,
-        nullable=False
-    )
+    phone = Column(String(20))
 
-    license_number: Mapped[str] = mapped_column(
-        String(50),
-        unique=True,
-        nullable=False
-    )
+    license_number = Column(String(50))
 
-    status: Mapped[str] = mapped_column(
-        String(20),
-        default="available"
-    )
+    rating = Column(Float, default=5.0)
 
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        default=datetime.utcnow
-    )
+    shift_start = Column(DateTime)
 
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow
-    )
+    shift_end = Column(DateTime)
+
+    current_latitude = Column(Float)
+
+    current_longitude = Column(Float)
+
+    status = Column(String(30), default="AVAILABLE")

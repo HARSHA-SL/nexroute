@@ -8,7 +8,6 @@ from datetime import datetime
 
 from app.db.base import Base
 
-
 class RouteStop(Base):
     __tablename__ = "route_stops"
 

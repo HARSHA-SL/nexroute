@@ -1,43 +1,23 @@
-from sqlalchemy import String, Integer, DateTime
-from sqlalchemy.orm import Mapped, mapped_column
-from datetime import datetime
-
+from sqlalchemy import Column, Integer, String, Float
 from app.db.base import Base
-
 
 class Vehicle(Base):
     __tablename__ = "vehicles"
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    id = Column(Integer, primary_key=True)
 
-    vehicle_number: Mapped[str] = mapped_column(
-        String(50),
-        unique=True,
-        nullable=False
-    )
+    vehicle_number = Column(String(30), unique=True)
 
-    vehicle_type: Mapped[str] = mapped_column(
-        String(20),
-        nullable=False
-    )
+    vehicle_type = Column(String(30))
 
-    capacity_kg: Mapped[int] = mapped_column(
-        Integer,
-        nullable=False
-    )
+    capacity_weight = Column(Float)
 
-    status: Mapped[str] = mapped_column(
-        String(20),
-        default="available"
-    )
+    capacity_volume = Column(Float)
 
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        default=datetime.utcnow
-    )
+    fuel_type = Column(String(30))
 
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow
-    )
+    current_latitude = Column(Float)
+
+    current_longitude = Column(Float)
+
+    status = Column(String(30), default="AVAILABLE")
