@@ -1,7 +1,10 @@
 from fastapi import FastAPI
 from app.api.auth import router as auth_router
-app = FastAPI(title="NexRoute")
+from app.api.optimization import router as optimization_router
 
+
+app = FastAPI(title="NexRoute")
+app.include_router(optimization_router)
 
 @app.get("/")
 def root():
