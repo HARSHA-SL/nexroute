@@ -156,3 +156,75 @@ def deliver_package(
         "departure_time": stop.actual_departure_time,
         "delivery_status": delivery.status if delivery else None
     }
+
+
+@router.patch("/routes/{route_id}/complete")
+def complete_route(
+    route_id: int,
+    db: Session = Depends(get_db)
+):
+
+    route = db.query(Route).filter(
+        Route.id == route_id
+    ).first()
+
+    if route is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Route not found."
+        )
+
+    if route.status != "IN_PROGRESS":
+        raise HTTPException(
+            status_code=400,
+            detail="Route is not in progress."
+        )
+
+    stops = db.query(RouteStop).filter(
+        RouteStop.route_id == route.id
+    ).all()
+
+    if not stops:
+        raise HTTPException(
+            status_code=400,
+            detail="Route has no stops."
+        )
+
+    for stop in stops:
+
+        delivery = db.query(Delivery).filter(
+            Delivery.id == stop.delivery_id
+        ).first()
+
+        if delivery is None or delivery.status != "DELIVERED":
+            raise HTTPException(
+                status_code=400,
+                detail="All deliveries must be completed before finishing the route."
+            )
+
+    driver = db.query(Driver).filter(
+        Driver.id == route.driver_id
+    ).first()
+
+    vehicle = db.query(Vehicle).filter(
+        Vehicle.id == route.vehicle_id
+    ).first()
+
+    route.status = "COMPLETED"
+
+    if driver:
+        driver.status = "AVAILABLE"
+
+    if vehicle:
+        vehicle.status = "AVAILABLE"
+
+    db.commit()
+
+    return {
+        "success": True,
+        "message": "Route completed successfully.",
+        "route_id": route.id,
+        "route_status": route.status,
+        "driver_status": driver.status if driver else None,
+        "vehicle_status": vehicle.status if vehicle else None
+    }
