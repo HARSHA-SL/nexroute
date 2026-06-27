@@ -5,7 +5,6 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 from datetime import datetime
-
 from app.db.base import Base
 
 class RouteStop(Base):
