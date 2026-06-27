@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -91,4 +91,215 @@ def get_all_routes(db: Session = Depends(get_db)):
         "success": True,
         "routes": response,
         "total_routes": len(response)
+    }
+
+
+@router.get("/driver/{driver_id}")
+def get_driver_routes(
+    driver_id: int,
+    db: Session = Depends(get_db)
+):
+
+    routes = (
+        db.query(Route)
+        .filter(Route.driver_id == driver_id)
+        .all()
+    )
+
+    response = []
+
+    for route in routes:
+
+        vehicle = db.query(Vehicle).filter(
+            Vehicle.id == route.vehicle_id
+        ).first()
+
+        warehouse = db.query(Warehouse).filter(
+            Warehouse.id == route.warehouse_id
+        ).first()
+
+        stops = (
+            db.query(RouteStop)
+            .filter(RouteStop.route_id == route.id)
+            .order_by(RouteStop.stop_order)
+            .all()
+        )
+
+        deliveries = []
+
+        for stop in stops:
+
+            delivery = db.query(Delivery).filter(
+                Delivery.id == stop.delivery_id
+            ).first()
+
+            deliveries.append({
+                "stop_order": stop.stop_order,
+                "delivery_id": delivery.id,
+                "customer_name": delivery.customer_name,
+                "address": delivery.address,
+                "latitude": delivery.latitude,
+                "longitude": delivery.longitude,
+                "priority": delivery.priority,
+                "planned_arrival_time": stop.planned_arrival_time,
+                "planned_departure_time": stop.planned_departure_time,
+                "status": delivery.status
+            })
+
+        response.append({
+            "route_id": route.id,
+            "status": route.status,
+            "route_date": route.route_date,
+            "vehicle": {
+                "vehicle_number": vehicle.vehicle_number,
+                "vehicle_type": vehicle.vehicle_type
+            },
+            "warehouse": {
+                "name": warehouse.name,
+                "address": warehouse.address
+            },
+            "deliveries": deliveries
+        })
+
+    return {
+        "success": True,
+        "driver_id": driver_id,
+        "routes": response,
+        "total_routes": len(response)
+    }
+
+
+@router.get("/{route_id}")
+def get_route(
+    route_id: int,
+    db: Session = Depends(get_db)
+):
+
+    route = db.query(Route).filter(
+        Route.id == route_id
+    ).first()
+
+    if route is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Route not found."
+        )
+
+    driver = db.query(Driver).filter(
+        Driver.id == route.driver_id
+    ).first()
+
+    vehicle = db.query(Vehicle).filter(
+        Vehicle.id == route.vehicle_id
+    ).first()
+
+    warehouse = db.query(Warehouse).filter(
+        Warehouse.id == route.warehouse_id
+    ).first()
+
+    stops = (
+        db.query(RouteStop)
+        .filter(RouteStop.route_id == route.id)
+        .order_by(RouteStop.stop_order)
+        .all()
+    )
+
+    stop_list = []
+
+    for stop in stops:
+
+        delivery = db.query(Delivery).filter(
+            Delivery.id == stop.delivery_id
+        ).first()
+
+        stop_list.append({
+            "stop_order": stop.stop_order,
+            "delivery_id": delivery.id,
+            "customer_name": delivery.customer_name,
+            "address": delivery.address,
+            "latitude": delivery.latitude,
+            "longitude": delivery.longitude,
+            "priority": delivery.priority,
+            "status": delivery.status,
+            "planned_arrival_time": stop.planned_arrival_time,
+            "planned_departure_time": stop.planned_departure_time,
+            "actual_arrival_time": stop.actual_arrival_time,
+            "actual_departure_time": stop.actual_departure_time
+        })
+
+    return {
+        "success": True,
+        "route": {
+            "route_id": route.id,
+            "status": route.status,
+            "route_date": route.route_date,
+            "driver": {
+                "id": driver.id,
+                "name": driver.name,
+                "phone": driver.phone
+            },
+            "vehicle": {
+                "id": vehicle.id,
+                "vehicle_number": vehicle.vehicle_number,
+                "vehicle_type": vehicle.vehicle_type
+            },
+            "warehouse": {
+                "id": warehouse.id,
+                "name": warehouse.name,
+                "address": warehouse.address
+            },
+            "total_distance_km": route.total_distance_km,
+            "estimated_duration_minutes": route.estimated_duration_minutes,
+            "stops": stop_list
+        }
+    }
+
+
+@router.patch("/{route_id}/start")
+def start_route(
+    route_id: int,
+    db: Session = Depends(get_db)
+):
+
+    route = db.query(Route).filter(
+        Route.id == route_id
+    ).first()
+
+    if route is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Route not found."
+        )
+
+    if route.status != "PLANNED":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Route is already {route.status}."
+        )
+
+    driver = db.query(Driver).filter(
+        Driver.id == route.driver_id
+    ).first()
+
+    vehicle = db.query(Vehicle).filter(
+        Vehicle.id == route.vehicle_id
+    ).first()
+
+    route.status = "IN_PROGRESS"
+
+    if driver:
+        driver.status = "ON_ROUTE"
+
+    if vehicle:
+        vehicle.status = "ON_ROUTE"
+
+    db.commit()
+
+    return {
+        "success": True,
+        "message": "Route started successfully.",
+        "route_id": route.id,
+        "driver_status": driver.status if driver else None,
+        "vehicle_status": vehicle.status if vehicle else None,
+        "route_status": route.status
     }
