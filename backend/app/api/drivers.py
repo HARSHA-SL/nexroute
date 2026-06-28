@@ -1,11 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
+
 from app.schemas.driver import (
     DriverCreate,
     DriverUpdate,
     DriverLocationUpdate
 )
+
 from app.db.session import get_db
 from app.models.driver import Driver
 from app.models.delivery import Delivery
@@ -18,12 +20,47 @@ router = APIRouter(
 
 @router.get("/")
 def get_all_drivers(
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
+    search: str | None = None,
+    status: str | None = None,
+    sort: str = "id",
     db: Session = Depends(get_db)
 ):
 
+    query = db.query(Driver)
+
+    if search:
+        query = query.filter(
+            Driver.name.ilike(f"%{search}%")
+        )
+
+    if status:
+        query = query.filter(
+            Driver.status == status
+        )
+
+    if sort == "rating":
+        query = query.order_by(
+            Driver.rating.desc()
+        )
+
+    elif sort == "name":
+        query = query.order_by(
+            Driver.name
+        )
+
+    else:
+        query = query.order_by(
+            Driver.id
+        )
+
+    total = query.count()
+
     drivers = (
-        db.query(Driver)
-        .order_by(Driver.id)
+        query
+        .offset((page - 1) * limit)
+        .limit(limit)
         .all()
     )
 
@@ -46,7 +83,12 @@ def get_all_drivers(
 
     return {
         "success": True,
-        "total_drivers": len(response),
+        "page": page,
+        "limit": limit,
+        "total": total,
+        "total_pages": (
+            total + limit - 1
+        ) // limit,
         "drivers": response
     }
 
@@ -59,7 +101,9 @@ def get_driver(
 
     driver = (
         db.query(Driver)
-        .filter(Driver.id == driver_id)
+        .filter(
+            Driver.id == driver_id
+        )
         .first()
     )
 
@@ -156,6 +200,8 @@ def create_driver(
             "status": driver.status
         }
     }
+
+
 @router.patch("/{driver_id}")
 def update_driver(
     driver_id: int,
@@ -165,7 +211,9 @@ def update_driver(
 
     driver = (
         db.query(Driver)
-        .filter(Driver.id == driver_id)
+        .filter(
+            Driver.id == driver_id
+        )
         .first()
     )
 
@@ -219,6 +267,8 @@ def update_driver(
             "status": driver.status
         }
     }
+
+
 @router.delete("/{driver_id}")
 def delete_driver(
     driver_id: int,
@@ -227,7 +277,9 @@ def delete_driver(
 
     driver = (
         db.query(Driver)
-        .filter(Driver.id == driver_id)
+        .filter(
+            Driver.id == driver_id
+        )
         .first()
     )
 
@@ -259,6 +311,8 @@ def delete_driver(
         "success": True,
         "message": "Driver deleted successfully."
     }
+
+
 @router.patch("/{driver_id}/location")
 def update_driver_location(
     driver_id: int,
@@ -268,7 +322,9 @@ def update_driver_location(
 
     driver = (
         db.query(Driver)
-        .filter(Driver.id == driver_id)
+        .filter(
+            Driver.id == driver_id
+        )
         .first()
     )
 

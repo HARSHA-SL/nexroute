@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -16,9 +16,44 @@ router = APIRouter(
 
 
 @router.get("/")
-def get_all_routes(db: Session = Depends(get_db)):
+def get_all_routes(
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
+    status: str | None = None,
+    sort: str = "id",
+    db: Session = Depends(get_db)
+):
 
-    routes = db.query(Route).all()
+    query = db.query(Route)
+
+    if status:
+        query = query.filter(
+            Route.status == status
+        )
+
+    if sort == "date":
+        query = query.order_by(
+            Route.route_date.desc()
+        )
+
+    elif sort == "distance":
+        query = query.order_by(
+            Route.total_distance_km.desc()
+        )
+
+    else:
+        query = query.order_by(
+            Route.id.desc()
+        )
+
+    total = query.count()
+
+    routes = (
+        query
+        .offset((page - 1) * limit)
+        .limit(limit)
+        .all()
+    )
 
     response = []
 
@@ -71,17 +106,17 @@ def get_all_routes(db: Session = Depends(get_db)):
                 "id": driver.id,
                 "name": driver.name,
                 "phone": driver.phone
-            },
+            } if driver else None,
             "vehicle": {
                 "id": vehicle.id,
                 "vehicle_number": vehicle.vehicle_number,
                 "vehicle_type": vehicle.vehicle_type
-            },
+            } if vehicle else None,
             "warehouse": {
                 "id": warehouse.id,
                 "name": warehouse.name,
                 "address": warehouse.address
-            },
+            } if warehouse else None,
             "total_distance_km": route.total_distance_km,
             "estimated_duration_minutes": route.estimated_duration_minutes,
             "stops": stop_list
@@ -89,11 +124,14 @@ def get_all_routes(db: Session = Depends(get_db)):
 
     return {
         "success": True,
-        "routes": response,
-        "total_routes": len(response)
+        "page": page,
+        "limit": limit,
+        "total": total,
+        "total_pages": (
+            total + limit - 1
+        ) // limit,
+        "routes": response
     }
-
-
 @router.get("/driver/{driver_id}")
 def get_driver_routes(
     driver_id: int,
@@ -103,6 +141,7 @@ def get_driver_routes(
     routes = (
         db.query(Route)
         .filter(Route.driver_id == driver_id)
+        .order_by(Route.route_date.desc())
         .all()
     )
 
@@ -110,13 +149,17 @@ def get_driver_routes(
 
     for route in routes:
 
-        vehicle = db.query(Vehicle).filter(
-            Vehicle.id == route.vehicle_id
-        ).first()
+        vehicle = (
+            db.query(Vehicle)
+            .filter(Vehicle.id == route.vehicle_id)
+            .first()
+        )
 
-        warehouse = db.query(Warehouse).filter(
-            Warehouse.id == route.warehouse_id
-        ).first()
+        warehouse = (
+            db.query(Warehouse)
+            .filter(Warehouse.id == route.warehouse_id)
+            .first()
+        )
 
         stops = (
             db.query(RouteStop)
@@ -129,9 +172,11 @@ def get_driver_routes(
 
         for stop in stops:
 
-            delivery = db.query(Delivery).filter(
-                Delivery.id == stop.delivery_id
-            ).first()
+            delivery = (
+                db.query(Delivery)
+                .filter(Delivery.id == stop.delivery_id)
+                .first()
+            )
 
             deliveries.append({
                 "stop_order": stop.stop_order,
@@ -153,19 +198,19 @@ def get_driver_routes(
             "vehicle": {
                 "vehicle_number": vehicle.vehicle_number,
                 "vehicle_type": vehicle.vehicle_type
-            },
+            } if vehicle else None,
             "warehouse": {
                 "name": warehouse.name,
                 "address": warehouse.address
-            },
+            } if warehouse else None,
             "deliveries": deliveries
         })
 
     return {
         "success": True,
         "driver_id": driver_id,
-        "routes": response,
-        "total_routes": len(response)
+        "total_routes": len(response),
+        "routes": response
     }
 
 
@@ -175,9 +220,11 @@ def get_route(
     db: Session = Depends(get_db)
 ):
 
-    route = db.query(Route).filter(
-        Route.id == route_id
-    ).first()
+    route = (
+        db.query(Route)
+        .filter(Route.id == route_id)
+        .first()
+    )
 
     if route is None:
         raise HTTPException(
@@ -185,17 +232,23 @@ def get_route(
             detail="Route not found."
         )
 
-    driver = db.query(Driver).filter(
-        Driver.id == route.driver_id
-    ).first()
+    driver = (
+        db.query(Driver)
+        .filter(Driver.id == route.driver_id)
+        .first()
+    )
 
-    vehicle = db.query(Vehicle).filter(
-        Vehicle.id == route.vehicle_id
-    ).first()
+    vehicle = (
+        db.query(Vehicle)
+        .filter(Vehicle.id == route.vehicle_id)
+        .first()
+    )
 
-    warehouse = db.query(Warehouse).filter(
-        Warehouse.id == route.warehouse_id
-    ).first()
+    warehouse = (
+        db.query(Warehouse)
+        .filter(Warehouse.id == route.warehouse_id)
+        .first()
+    )
 
     stops = (
         db.query(RouteStop)
@@ -208,9 +261,11 @@ def get_route(
 
     for stop in stops:
 
-        delivery = db.query(Delivery).filter(
-            Delivery.id == stop.delivery_id
-        ).first()
+        delivery = (
+            db.query(Delivery)
+            .filter(Delivery.id == stop.delivery_id)
+            .first()
+        )
 
         stop_list.append({
             "stop_order": stop.stop_order,
@@ -237,33 +292,33 @@ def get_route(
                 "id": driver.id,
                 "name": driver.name,
                 "phone": driver.phone
-            },
+            } if driver else None,
             "vehicle": {
                 "id": vehicle.id,
                 "vehicle_number": vehicle.vehicle_number,
                 "vehicle_type": vehicle.vehicle_type
-            },
+            } if vehicle else None,
             "warehouse": {
                 "id": warehouse.id,
                 "name": warehouse.name,
                 "address": warehouse.address
-            },
+            } if warehouse else None,
             "total_distance_km": route.total_distance_km,
             "estimated_duration_minutes": route.estimated_duration_minutes,
             "stops": stop_list
         }
     }
-
-
 @router.patch("/{route_id}/start")
 def start_route(
     route_id: int,
     db: Session = Depends(get_db)
 ):
 
-    route = db.query(Route).filter(
-        Route.id == route_id
-    ).first()
+    route = (
+        db.query(Route)
+        .filter(Route.id == route_id)
+        .first()
+    )
 
     if route is None:
         raise HTTPException(
@@ -277,13 +332,17 @@ def start_route(
             detail=f"Route is already {route.status}."
         )
 
-    driver = db.query(Driver).filter(
-        Driver.id == route.driver_id
-    ).first()
+    driver = (
+        db.query(Driver)
+        .filter(Driver.id == route.driver_id)
+        .first()
+    )
 
-    vehicle = db.query(Vehicle).filter(
-        Vehicle.id == route.vehicle_id
-    ).first()
+    vehicle = (
+        db.query(Vehicle)
+        .filter(Vehicle.id == route.vehicle_id)
+        .first()
+    )
 
     route.status = "IN_PROGRESS"
 
@@ -294,12 +353,15 @@ def start_route(
         vehicle.status = "ON_ROUTE"
 
     db.commit()
+    db.refresh(route)
 
     return {
         "success": True,
         "message": "Route started successfully.",
-        "route_id": route.id,
-        "driver_status": driver.status if driver else None,
-        "vehicle_status": vehicle.status if vehicle else None,
-        "route_status": route.status
+        "route": {
+            "route_id": route.id,
+            "route_status": route.status,
+            "driver_status": driver.status if driver else None,
+            "vehicle_status": vehicle.status if vehicle else None
+        }
     }

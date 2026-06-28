@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.models.vehicle import Vehicle
 from app.schemas.vehicle import VehicleCreate, VehicleUpdate
+
 router = APIRouter(
     prefix="/vehicles",
     tags=["Vehicles"]
@@ -12,12 +13,47 @@ router = APIRouter(
 
 @router.get("/")
 def get_all_vehicles(
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
+    search: str | None = None,
+    status: str | None = None,
+    sort: str = "id",
     db: Session = Depends(get_db)
 ):
 
+    query = db.query(Vehicle)
+
+    if search:
+        query = query.filter(
+            Vehicle.vehicle_number.ilike(f"%{search}%")
+        )
+
+    if status:
+        query = query.filter(
+            Vehicle.status == status
+        )
+
+    if sort == "vehicle_number":
+        query = query.order_by(
+            Vehicle.vehicle_number
+        )
+
+    elif sort == "vehicle_type":
+        query = query.order_by(
+            Vehicle.vehicle_type
+        )
+
+    else:
+        query = query.order_by(
+            Vehicle.id
+        )
+
+    total = query.count()
+
     vehicles = (
-        db.query(Vehicle)
-        .order_by(Vehicle.id)
+        query
+        .offset((page - 1) * limit)
+        .limit(limit)
         .all()
     )
 
@@ -39,7 +75,12 @@ def get_all_vehicles(
 
     return {
         "success": True,
-        "total_vehicles": len(response),
+        "page": page,
+        "limit": limit,
+        "total": total,
+        "total_pages": (
+            total + limit - 1
+        ) // limit,
         "vehicles": response
     }
 
@@ -52,7 +93,9 @@ def get_vehicle(
 
     vehicle = (
         db.query(Vehicle)
-        .filter(Vehicle.id == vehicle_id)
+        .filter(
+            Vehicle.id == vehicle_id
+        )
         .first()
     )
 
@@ -75,7 +118,6 @@ def get_vehicle(
             "current_longitude": vehicle.current_longitude,
             "status": vehicle.status
         }
-        
     }
 @router.post("/")
 def create_vehicle(
@@ -134,7 +176,9 @@ def update_vehicle(
 
     vehicle = (
         db.query(Vehicle)
-        .filter(Vehicle.id == vehicle_id)
+        .filter(
+            Vehicle.id == vehicle_id
+        )
         .first()
     )
 
@@ -192,7 +236,9 @@ def delete_vehicle(
 
     vehicle = (
         db.query(Vehicle)
-        .filter(Vehicle.id == vehicle_id)
+        .filter(
+            Vehicle.id == vehicle_id
+        )
         .first()
     )
 

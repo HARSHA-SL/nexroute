@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.models.warehouse import Warehouse
 from app.schemas.warehouse import WarehouseCreate, WarehouseUpdate
+
 router = APIRouter(
     prefix="/warehouses",
     tags=["Warehouses"]
@@ -12,12 +13,36 @@ router = APIRouter(
 
 @router.get("/")
 def get_all_warehouses(
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
+    search: str | None = None,
+    sort: str = "id",
     db: Session = Depends(get_db)
 ):
 
+    query = db.query(Warehouse)
+
+    if search:
+        query = query.filter(
+            Warehouse.name.ilike(f"%{search}%")
+        )
+
+    if sort == "name":
+        query = query.order_by(
+            Warehouse.name
+        )
+
+    else:
+        query = query.order_by(
+            Warehouse.id
+        )
+
+    total = query.count()
+
     warehouses = (
-        db.query(Warehouse)
-        .order_by(Warehouse.id)
+        query
+        .offset((page - 1) * limit)
+        .limit(limit)
         .all()
     )
 
@@ -37,7 +62,12 @@ def get_all_warehouses(
 
     return {
         "success": True,
-        "total_warehouses": len(response),
+        "page": page,
+        "limit": limit,
+        "total": total,
+        "total_pages": (
+            total + limit - 1
+        ) // limit,
         "warehouses": response
     }
 
@@ -50,7 +80,9 @@ def get_warehouse(
 
     warehouse = (
         db.query(Warehouse)
-        .filter(Warehouse.id == warehouse_id)
+        .filter(
+            Warehouse.id == warehouse_id
+        )
         .first()
     )
 
@@ -80,7 +112,9 @@ def create_warehouse(
 
     existing = (
         db.query(Warehouse)
-        .filter(Warehouse.name == warehouse_data.name)
+        .filter(
+            Warehouse.name == warehouse_data.name
+        )
         .first()
     )
 
@@ -104,7 +138,15 @@ def create_warehouse(
     return {
         "success": True,
         "message": "Warehouse created successfully.",
-        "warehouse": warehouse
+        "warehouse": {
+            "id": warehouse.id,
+            "name": warehouse.name,
+            "address": warehouse.address,
+            "latitude": warehouse.latitude,
+            "longitude": warehouse.longitude,
+            "created_at": warehouse.created_at,
+            "updated_at": warehouse.updated_at
+        }
     }
 
 
@@ -117,7 +159,9 @@ def update_warehouse(
 
     warehouse = (
         db.query(Warehouse)
-        .filter(Warehouse.id == warehouse_id)
+        .filter(
+            Warehouse.id == warehouse_id
+        )
         .first()
     )
 
@@ -153,7 +197,15 @@ def update_warehouse(
     return {
         "success": True,
         "message": "Warehouse updated successfully.",
-        "warehouse": warehouse
+        "warehouse": {
+            "id": warehouse.id,
+            "name": warehouse.name,
+            "address": warehouse.address,
+            "latitude": warehouse.latitude,
+            "longitude": warehouse.longitude,
+            "created_at": warehouse.created_at,
+            "updated_at": warehouse.updated_at
+        }
     }
 
 
@@ -165,7 +217,9 @@ def delete_warehouse(
 
     warehouse = (
         db.query(Warehouse)
-        .filter(Warehouse.id == warehouse_id)
+        .filter(
+            Warehouse.id == warehouse_id
+        )
         .first()
     )
 
