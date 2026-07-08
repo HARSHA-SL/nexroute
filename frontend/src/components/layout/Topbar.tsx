@@ -30,13 +30,7 @@ export default function Topbar() {
 
       <div className="flex items-center gap-4">
 
-        <button className="flex h-11 items-center gap-2 rounded-xl bg-[#2563EB] px-5 text-sm font-medium transition hover:bg-[#1D4ED8]">
-
-          <Plus size={16} />
-
-          New Route
-
-        </button>
+       
 
         <button className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#2A2F36] bg-[#1B1F23]">
 

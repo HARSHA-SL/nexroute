@@ -65,10 +65,7 @@ export default function RoutesPage() {
             Refresh
           </button>
 
-          <button className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 font-medium transition hover:bg-blue-700">
-            <Plus size={18} />
-            New Route
-          </button>
+          
         </div>
       </div>
 
