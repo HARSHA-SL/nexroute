@@ -33,6 +33,7 @@ class RouteSolver:
         search_parameters = (
             pywrapcp.DefaultRoutingSearchParameters()
         )
+        search_parameters.time_limit.seconds = 5
 
         search_parameters.first_solution_strategy = (
             routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC

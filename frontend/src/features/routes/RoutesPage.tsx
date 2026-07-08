@@ -1,18 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  Eye,
-  Pencil,
-  Plus,
-  RefreshCw,
-  Trash2,
-  Truck,
-} from "lucide-react";
+import { Eye, Pencil, RefreshCw, Trash2, Truck } from "lucide-react";
 
 import { routesService } from "@/services/routes.service";
-
+import RouteDetailsModal from "./RouteDetailsModal";
 export default function RoutesPage() {
   const [routes, setRoutes] = useState<any[]>([]);
   const [search, setSearch] = useState("");
+  const [selectedRoute, setSelectedRoute] = useState<any>(null);
+  const [openDetails, setOpenDetails] = useState(false);
 
   async function loadRoutes() {
     try {
@@ -148,9 +143,21 @@ export default function RoutesPage() {
 
                   <td>
                     <div className="flex justify-center gap-4">
-                      <button className="text-zinc-400 transition hover:text-white">
-                        <Eye size={18} />
-                      </button>
+                      <button
+  onClick={async () => {
+    try {
+      const data = await routesService.getRoute(route.route_id);
+
+      setSelectedRoute(data.route);
+      setOpenDetails(true);
+    } catch (err) {
+      console.error(err);
+    }
+  }}
+  className="text-zinc-400 hover:text-white"
+>
+  <Eye size={18} />
+</button>
 
                       <button className="text-zinc-400 transition hover:text-blue-400">
                         <Pencil size={18} />
@@ -167,6 +174,18 @@ export default function RoutesPage() {
           </tbody>
         </table>
       </div>
+            
+
+      <RouteDetailsModal
+        open={openDetails}
+        route={selectedRoute}
+        onClose={() => {
+          setOpenDetails(false);
+          setSelectedRoute(null);
+        }}
+      />
+
+    
     </div>
   );
 }

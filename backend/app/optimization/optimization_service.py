@@ -63,21 +63,50 @@ class OptimizationService:
             vehicles,
             drivers
         )
-
-        # Build coordinates list
+                # Build coordinates list
+        # Node 0 is always the warehouse (depot)
         coordinates = [
-            (delivery.latitude, delivery.longitude)
-            for delivery in deliveries
+            (
+                warehouse.latitude,
+                warehouse.longitude,
+            )
         ]
+
+        # Add all delivery locations
+        for delivery in deliveries:
+            coordinates.append(
+                (
+                    delivery.latitude,
+                    delivery.longitude,
+                )
+            )
+
+        print("\n===== COORDINATES =====")
+        for i, coordinate in enumerate(coordinates):
+            print(f"{i}: {coordinate}")
 
         # Build distance matrix
         matrix = DistanceMatrix.build_matrix(coordinates)
+
+        print("\n===== DISTANCE MATRIX =====")
+        for row in matrix:
+            print(row)
 
         # Solve routes
         routes = RouteSolver.solve(
             distance_matrix=matrix,
             vehicle_count=len(vehicles)
         )
+
+        print("\n========== ROUTES ==========")
+        print(routes)
+        print("============================\n")
+
+        if routes is None:
+            return {
+                "success": False,
+                "message": "Route solver failed."
+            }
 
         saved_routes = []
 
@@ -106,8 +135,7 @@ class OptimizationService:
             db.add(db_route)
             db.flush()
 
-            order = 1
-
+            order = 1            
             for node in route:
 
                 # Skip depot
@@ -116,8 +144,13 @@ class OptimizationService:
 
                 delivery = deliveries[node - 1]
 
-                planned_arrival = datetime.utcnow() + timedelta(minutes=order * 20)
-                planned_departure = planned_arrival + timedelta(minutes=5)
+                planned_arrival = datetime.utcnow() + timedelta(
+                    minutes=order * 20
+                )
+
+                planned_departure = planned_arrival + timedelta(
+                    minutes=5
+                )
 
                 stop = RouteStop(
                     route_id=db_route.id,
