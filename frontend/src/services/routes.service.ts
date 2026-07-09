@@ -20,4 +20,11 @@ export const routesService = {
 
     return response.data;
   },
+  async arriveAtStop(stopId: number) {
+  const response = await api.patch(
+    `/route-actions/route-stops/${stopId}/arrive`
+  );
+
+  return response.data;
+},
 };

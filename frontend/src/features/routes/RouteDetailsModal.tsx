@@ -22,7 +22,6 @@ export default function RouteDetailsModal({
 }: Props) {
   if (!open || !route) return null;
   const [starting, setStarting] = useState(false);
-
 async function handleStartRoute() {
   try {
     setStarting(true);
@@ -35,6 +34,22 @@ async function handleStartRoute() {
     alert("Unable to start route.");
   } finally {
     setStarting(false);
+  }
+}
+
+async function handleArrive(stopId: number) {
+  try {
+    await routesService.arriveAtStop(stopId);
+
+    const stop = route.stops.find((s: any) => s.stop_id === stopId);
+
+    if (stop) {
+      stop.status = "ARRIVED";
+      stop.actual_arrival_time = new Date().toISOString();
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Unable to arrive at stop.");
   }
 }
 
@@ -186,6 +201,21 @@ async function handleStartRoute() {
                               ).toLocaleString()
                             : "-"}
                         </p>
+                        {stop.status === "PENDING" &&
+  route.status === "IN_PROGRESS" && (
+    <button
+      onClick={() => handleArrive(stop.stop_id)}
+      className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+    >
+      Arrive
+    </button>
+)}
+
+{stop.status === "ARRIVED" && (
+  <div className="mt-4 rounded-lg bg-green-600 px-4 py-2 text-center text-sm font-semibold text-white">
+    Arrived
+  </div>
+)}
                       </div>
                     </div>
                   </div>

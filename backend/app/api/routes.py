@@ -85,9 +85,9 @@ def get_all_routes(
             delivery = db.query(Delivery).filter(
                 Delivery.id == stop.delivery_id
             ).first()
-
             stop_list.append({
-                "stop_order": stop.stop_order,
+                "stop_id": stop.id,
+                
                 "delivery_id": delivery.id,
                 "customer_name": delivery.customer_name,
                 "address": delivery.address,
@@ -268,9 +268,10 @@ def get_route(
         )
 
         stop_list.append({
-            "stop_order": stop.stop_order,
-            "delivery_id": delivery.id,
-            "customer_name": delivery.customer_name,
+    "stop_id": stop.id,
+    "stop_order": stop.stop_order,
+    "delivery_id": delivery.id,
+    "customer_name": delivery.customer_name,
             "address": delivery.address,
             "latitude": delivery.latitude,
             "longitude": delivery.longitude,
