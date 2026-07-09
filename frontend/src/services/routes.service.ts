@@ -27,4 +27,18 @@ export const routesService = {
 
   return response.data;
 },
+async deliverPackage(stopId: number) {
+  const response = await api.patch(
+    `/route-actions/route-stops/${stopId}/deliver`
+  );
+
+  return response.data;
+},
+async completeRoute(routeId: number) {
+  const response = await api.patch(
+    `/route-actions/routes/${routeId}/complete`
+  );
+
+  return response.data;
+},
 };

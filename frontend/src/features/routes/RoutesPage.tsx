@@ -177,13 +177,21 @@ export default function RoutesPage() {
             
 
       <RouteDetailsModal
-        open={openDetails}
-        route={selectedRoute}
-        onClose={() => {
-          setOpenDetails(false);
-          setSelectedRoute(null);
-        }}
-      />
+  open={openDetails}
+  route={selectedRoute}
+  onClose={() => setOpenDetails(false)}
+  onRefresh={async () => {
+    if (!selectedRoute) return;
+
+    const data = await routesService.getRoute(
+      selectedRoute.route_id
+    );
+
+    setSelectedRoute(data.route);
+
+    await loadRoutes();
+  }}
+/>
 
     
     </div>

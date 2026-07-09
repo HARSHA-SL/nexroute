@@ -13,12 +13,14 @@ type Props = {
   open: boolean;
   route: any;
   onClose: () => void;
+  onRefresh: () => Promise<void>;
 };
 
 export default function RouteDetailsModal({
   open,
   route,
   onClose,
+  onRefresh,
 }: Props) {
   if (!open || !route) return null;
   const [starting, setStarting] = useState(false);
@@ -41,15 +43,30 @@ async function handleArrive(stopId: number) {
   try {
     await routesService.arriveAtStop(stopId);
 
-    const stop = route.stops.find((s: any) => s.stop_id === stopId);
-
-    if (stop) {
-      stop.status = "ARRIVED";
-      stop.actual_arrival_time = new Date().toISOString();
-    }
+    await onRefresh();
   } catch (err) {
     console.error(err);
     alert("Unable to arrive at stop.");
+  }
+}
+async function handleDeliver(stopId: number) {
+  try {
+    await routesService.deliverPackage(stopId);
+
+    await onRefresh();
+  } catch (err) {
+    console.error(err);
+    alert("Unable to deliver package.");
+  }
+}
+async function handleCompleteRoute() {
+  try {
+    await routesService.completeRoute(route.route_id);
+
+    await onRefresh();
+  } catch (err) {
+    console.error(err);
+    alert("Unable to complete route.");
   }
 }
 
@@ -212,8 +229,17 @@ async function handleArrive(stopId: number) {
 )}
 
 {stop.status === "ARRIVED" && (
+  <button
+    onClick={() => handleDeliver(stop.stop_id)}
+    className="mt-4 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700"
+  >
+    Deliver Package
+  </button>
+)}
+
+{stop.status === "DELIVERED" && (
   <div className="mt-4 rounded-lg bg-green-600 px-4 py-2 text-center text-sm font-semibold text-white">
-    Arrived
+    ✓ Delivered
   </div>
 )}
                       </div>
@@ -224,14 +250,26 @@ async function handleArrive(stopId: number) {
             </div>
           </div>
 
-          <div className="flex justify-end border-t border-zinc-800 px-8 py-6">
-            <button
-              onClick={onClose}
-              className="rounded-xl bg-blue-600 px-6 py-3 font-semibold hover:bg-blue-700"
-            >
-              Close
-            </button>
-          </div>
+          <div className="flex justify-between border-t border-zinc-800 px-8 py-6">
+
+  {route.status === "IN_PROGRESS" &&
+    route.stops.every((s: any) => s.status === "DELIVERED") && (
+      <button
+        onClick={handleCompleteRoute}
+        className="rounded-xl bg-green-600 px-6 py-3 font-semibold hover:bg-green-700"
+      >
+        Complete Route
+      </button>
+    )}
+
+  <button
+    onClick={onClose}
+    className="rounded-xl bg-blue-600 px-6 py-3 font-semibold hover:bg-blue-700"
+  >
+    Close
+  </button>
+
+</div>
         </div>
       </div>
     </div>
