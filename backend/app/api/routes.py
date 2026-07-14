@@ -300,10 +300,12 @@ def get_route(
                 "vehicle_type": vehicle.vehicle_type
             } if vehicle else None,
             "warehouse": {
-                "id": warehouse.id,
-                "name": warehouse.name,
-                "address": warehouse.address
-            } if warehouse else None,
+    "id": warehouse.id,
+    "name": warehouse.name,
+    "address": warehouse.address,
+    "latitude": warehouse.latitude,
+    "longitude": warehouse.longitude,
+} if warehouse else None,
             "total_distance_km": route.total_distance_km,
             "estimated_duration_minutes": route.estimated_duration_minutes,
             "stops": stop_list

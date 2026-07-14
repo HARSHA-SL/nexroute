@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { routesService } from "@/services/routes.service";
+import RouteMap from "./RouteMap";
 import {
   X,
   MapPin,
@@ -174,7 +175,16 @@ async function handleCompleteRoute() {
               </div>
             </div>
           </div>
+          <div>
+  <h3 className="mb-5 text-2xl font-semibold">
+    Route Map
+  </h3>
 
+  <RouteMap
+  warehouse={route.warehouse}
+  stops={route.stops}
+/>
+</div>
           <div>
             <h3 className="mb-5 text-2xl font-semibold">
               Delivery Stops
