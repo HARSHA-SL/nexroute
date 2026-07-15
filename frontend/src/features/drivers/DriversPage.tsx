@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import EditDriverModal from "./components/EditDriverModal";
+import type { Driver } from "@/types/driver";
+import Card from "@/components/ui/Card";
+import Badge from "@/components/ui/Badge";
+import Button from "@/components/ui/Button";
+import PageHeader from "@/components/ui/PageHeader";
 import {
-  Eye,
   Pencil,
   Plus,
   RefreshCw,
@@ -13,7 +17,7 @@ import { driversService } from "@/services/drivers.service";
 import DriverFormModal from "./components/DriverFormModal";
 
 export default function DriversPage() {
- const [drivers, setDrivers] = useState<any[]>([]);
+const [drivers, setDrivers] = useState<Driver[]>([]);
 const [search, setSearch] = useState("");
 
 const [openCreate, setOpenCreate] = useState(false);
@@ -21,7 +25,7 @@ const [openCreate, setOpenCreate] = useState(false);
 const [openEdit, setOpenEdit] = useState(false);
 
 const [selectedDriver, setSelectedDriver] =
-  useState<any>(null);
+  useState<Driver | null>(null);
   async function loadDrivers() {
     try {
       const data = await driversService.getAllDrivers();
@@ -36,7 +40,7 @@ const [selectedDriver, setSelectedDriver] =
     }
   }
 
-async function createDriver(driver: any) {
+async function createDriver(driver: Omit<Driver, "id">) {
   try {
     await driversService.createDriver(driver);
 
@@ -54,7 +58,7 @@ async function createDriver(driver: any) {
 }
 async function updateDriver(
   id: number,
-  driver: any
+  driver: Omit<Driver, "id">
 ) {
   try {
     await driversService.updateDriver(id, driver);
@@ -100,8 +104,7 @@ async function deleteDriver(id: number) {
   const filteredDrivers = useMemo(() => {
     const value = search.toLowerCase();
 
-    return drivers.filter((driver: any) =>
-      driver.name.toLowerCase().includes(value) ||
+    return drivers.filter((driver: Driver) =>      driver.name.toLowerCase().includes(value) ||
       driver.phone.toLowerCase().includes(value) ||
       driver.license_number.toLowerCase().includes(value)
     );
@@ -110,41 +113,30 @@ async function deleteDriver(id: number) {
   return (
     <div className="space-y-8">
 
-      <div className="flex items-center justify-between">
+      <PageHeader
+  title="Drivers"
+  description="Manage your delivery drivers."
+  action={
+    <div className="flex gap-3">
 
-        <div>
+      <Button
+        variant="secondary"
+        onClick={loadDrivers}
+      >
+        <RefreshCw size={18} />
+        <span className="ml-2">Refresh</span>
+      </Button>
 
-          <h1 className="text-5xl font-bold">
-            Drivers
-          </h1>
+      <Button
+        onClick={() => setOpenCreate(true)}
+      >
+        <Plus size={18} />
+        <span className="ml-2">New Driver</span>
+      </Button>
 
-          <p className="mt-2 text-lg text-zinc-400">
-            Manage your delivery drivers.
-          </p>
-
-        </div>
-
-        <div className="flex gap-3">
-
-          <button
-            onClick={loadDrivers}
-            className="flex items-center gap-2 rounded-xl border border-zinc-700 px-5 py-3 hover:border-zinc-500"
-          >
-            <RefreshCw size={18} />
-            Refresh
-          </button>
-
-          <button
-            onClick={() => setOpenCreate(true)}
-            className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 hover:bg-blue-700"
-          >
-            <Plus size={18} />
-            New Driver
-          </button>
-
-        </div>
-
-      </div>
+    </div>
+  }
+/>
 
       <input
         value={search}
@@ -153,8 +145,7 @@ async function deleteDriver(id: number) {
         className="w-96 rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 outline-none focus:border-blue-500"
       />
 
-      <div className="overflow-hidden rounded-2xl border border-zinc-800">
-
+<Card className="overflow-hidden p-0">
         <table className="w-full">
 
           <thead className="bg-zinc-900">
@@ -185,8 +176,7 @@ async function deleteDriver(id: number) {
                 </td>
               </tr>
             ) : (
-              filteredDrivers.map((driver: any) => (
-                <tr
+filteredDrivers.map((driver) => (                <tr
                   key={driver.id}
                   className="border-t border-zinc-800 hover:bg-zinc-900/40 transition-colors"
                 >
@@ -213,17 +203,7 @@ async function deleteDriver(id: number) {
                   </td>
 
                   <td>
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                        driver.status === "AVAILABLE"
-                          ? "bg-green-500/20 text-green-400"
-                          : driver.status === "ON_ROUTE"
-                          ? "bg-blue-500/20 text-blue-400"
-                          : "bg-red-500/20 text-red-400"
-                      }`}
-                    >
-                      {driver.status}
-                    </span>
+                    <Badge status={driver.status} />
                   </td>
 
                   <td>
@@ -239,9 +219,7 @@ async function deleteDriver(id: number) {
   <Pencil size={18} />
 </button>
 
-                      <button className="text-zinc-400 transition hover:text-blue-400">
-                        <Pencil size={18} />
-                      </button>
+                      
 
                       <button
   onClick={() => deleteDriver(driver.id)}
@@ -261,7 +239,7 @@ async function deleteDriver(id: number) {
 
         </table>
 
-      </div>
+      </Card>
                  <DriverFormModal
         open={openCreate}
         onClose={() => setOpenCreate(false)}

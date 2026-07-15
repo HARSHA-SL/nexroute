@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import KpiCard from "./KpiCard";
+import StatCard from "@/components/ui/StatCard";
 import {
   Package,
   Truck,
@@ -24,6 +24,7 @@ import {
 } from "recharts";
 
 import { analyticsService } from "@/services/analytics.service";
+import Card from "@/components/ui/Card";
 export default function AnalyticsPage() {
   const [analytics, setAnalytics] = useState<any>(null);
 
@@ -71,33 +72,37 @@ export default function AnalyticsPage() {
 
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
 
-  <KpiCard
-    title="Total Deliveries"
-    value={kpis.total_deliveries}
-    icon={<Package size={28} />}
-    color="bg-blue-500/20 text-blue-400"
-  />
+  <StatCard
+  title="Total Deliveries"
+  value={kpis.total_deliveries}
+  subtitle="All deliveries"
+  icon={<Package size={30} />}
+  iconClassName="bg-blue-500/20 text-blue-400"
+/>
 
-  <KpiCard
-    title="Total Routes"
-    value={kpis.total_routes}
-    icon={<Truck size={28} />}
-    color="bg-green-500/20 text-green-400"
-  />
+<StatCard
+  title="Total Routes"
+  value={kpis.total_routes}
+  subtitle="Routes created"
+  icon={<Truck size={30} />}
+  iconClassName="bg-green-500/20 text-green-400"
+/>
 
-  <KpiCard
-    title="Drivers"
-    value={kpis.total_drivers}
-    icon={<Users size={28} />}
-    color="bg-yellow-500/20 text-yellow-400"
-  />
+<StatCard
+  title="Drivers"
+  value={kpis.total_drivers}
+  subtitle="Registered drivers"
+  icon={<Users size={30} />}
+  iconClassName="bg-yellow-500/20 text-yellow-400"
+/>
 
-  <KpiCard
-    title="Warehouses"
-    value={kpis.total_warehouses}
-    icon={<Warehouse size={28} />}
-    color="bg-purple-500/20 text-purple-400"
-  />
+<StatCard
+  title="Warehouses"
+  value={kpis.total_warehouses}
+  subtitle="Active warehouses"
+  icon={<Warehouse size={30} />}
+  iconClassName="bg-purple-500/20 text-purple-400"
+/>
 
 </div>
 <div className="grid gap-6 lg:grid-cols-3">
@@ -155,7 +160,7 @@ export default function AnalyticsPage() {
 
   {/* Fleet Health */}
 
-  <div className="rounded-2xl border border-zinc-800 bg-gradient-to-br from-green-500/10 to-zinc-900 p-6">
+  <Card>
 
     <h2 className="text-2xl font-bold">
       Fleet Health
@@ -188,13 +193,13 @@ export default function AnalyticsPage() {
 
     </div>
 
-  </div>
+  </Card>
 
 </div>
       <div className="grid grid-cols-2 gap-8">
 
   {/* Delivery Status */}
-  <div className="group rounded-2xl border border-zinc-800 bg-gradient-to-br from-zinc-900 to-zinc-950 p-6 transition-all duration-300 hover:-translate-y-2 hover:border-blue-500 hover:shadow-[0_0_40px_rgba(59,130,246,0.18)]">
+  <Card>
 
     <h2 className="mb-6 text-2xl font-bold">
       Delivery Status
@@ -229,10 +234,10 @@ export default function AnalyticsPage() {
       </ResponsiveContainer>
     </div>
 
-  </div>
+  </Card>
 
   {/* Route Status */}
-  <div className="group rounded-2xl border border-zinc-800 bg-gradient-to-br from-zinc-900 to-zinc-950 p-6 transition-all duration-300 hover:-translate-y-2 hover:border-blue-500 hover:shadow-[0_0_40px_rgba(59,130,246,0.18)]">
+  <Card>
 
     <h2 className="mb-6 text-2xl font-bold">
       Route Status
@@ -260,13 +265,13 @@ export default function AnalyticsPage() {
       </ResponsiveContainer>
     </div>
 
-  </div>
+  </Card>
 
 </div>
 <div className="grid grid-cols-2 gap-8">
 
   {/* Vehicle Status */}
-  <div className="group rounded-2xl border border-zinc-800 bg-gradient-to-br from-zinc-900 to-zinc-950 p-6 transition-all duration-300 hover:-translate-y-2 hover:border-blue-500 hover:shadow-[0_0_40px_rgba(59,130,246,0.18)]">
+  <Card>
 
     <div className="mb-6 flex items-center gap-3">
       <Car className="text-green-400" />
@@ -303,10 +308,10 @@ export default function AnalyticsPage() {
       </ResponsiveContainer>
     </div>
 
-  </div>
+  </Card>
 
   {/* Driver Performance */}
-  <div className="group rounded-2xl border border-zinc-800 bg-gradient-to-br from-zinc-900 to-zinc-950 p-6 transition-all duration-300 hover:-translate-y-2 hover:border-blue-500 hover:shadow-[0_0_40px_rgba(59,130,246,0.18)]">
+  <Card>
 
     <div className="mb-6 flex items-center gap-3">
       <Trophy className="text-yellow-400" />
@@ -345,10 +350,10 @@ export default function AnalyticsPage() {
       </ResponsiveContainer>
     </div>
 
-  </div>
+  </Card>
 
 </div>
-<div className="group rounded-2xl border border-zinc-800 bg-gradient-to-br from-zinc-900 to-zinc-950 p-6 transition-all duration-300 hover:-translate-y-2 hover:border-blue-500 hover:shadow-[0_0_40px_rgba(59,130,246,0.18)]">
+<Card>
 
   <div className="mb-6 flex items-center gap-3">
     <Warehouse className="text-purple-400" />
@@ -393,7 +398,7 @@ export default function AnalyticsPage() {
 
   </div>
 
-</div>
+</Card>
           </div>
   );
 }

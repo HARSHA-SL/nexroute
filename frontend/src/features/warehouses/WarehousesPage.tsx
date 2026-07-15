@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
+import Card from "@/components/ui/Card";
+import Button from "@/components/ui/Button";
+import type { Warehouse } from "@/types/warehouse";
+import PageHeader from "@/components/ui/PageHeader";
 import {
-  Eye,
   Pencil,
   Plus,
   RefreshCw,
   Trash2,
-  Warehouse,
+  Warehouse as WarehouseIcon,
   MapPin,
 } from "lucide-react";
 
@@ -16,14 +19,13 @@ import WarehouseFormModal from "./WarehouseFormModal";
 import EditWarehouseModal from "./EditWarehouseModal";
 
 export default function WarehousesPage() {
-  const [warehouses, setWarehouses] = useState<any[]>([]);
-  const [search, setSearch] = useState("");
+const [warehouses, setWarehouses] = useState<Warehouse[]>([]);  const [search, setSearch] = useState("");
 
   const [openCreate, setOpenCreate] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
 
   const [selectedWarehouse, setSelectedWarehouse] =
-    useState<any>(null);
+  useState<Warehouse | null>(null);
 
   async function loadWarehouses() {
     try {
@@ -40,7 +42,7 @@ export default function WarehousesPage() {
     }
   }
 
-  async function createWarehouse(warehouse: any) {
+  async function createWarehouse(warehouse: Omit<Warehouse, "id">) {
     try {
       await api.post("/warehouses", warehouse);
 
@@ -55,25 +57,25 @@ export default function WarehousesPage() {
     }
   }
 
-  async function updateWarehouse(
-  warehouse: any
-) {
-  try {
-    await warehousesService.updateWarehouse(
-      selectedWarehouse.id,
-      warehouse
-    );
+  async function updateWarehouse(warehouse: Omit<Warehouse, "id">) {
+    if (!selectedWarehouse) return;
 
-    await loadWarehouses();
+    try {
+      await warehousesService.updateWarehouse(
+        selectedWarehouse.id,
+        warehouse
+      );
 
-    setOpenEdit(false);
+      await loadWarehouses();
 
-    setSelectedWarehouse(null);
-  } catch (err: any) {
-    alert(
-      err.response?.data?.detail ??
-      "Unable to update warehouse."
-    );
+      setOpenEdit(false);
+
+      setSelectedWarehouse(null);
+    } catch (err: any) {
+      alert(
+        err.response?.data?.detail ??
+        "Unable to update warehouse."
+      );
   }
 }
 
@@ -101,7 +103,7 @@ export default function WarehousesPage() {
     const value = search.toLowerCase();
 
     return warehouses.filter(
-      (warehouse: any) =>
+      (warehouse: Warehouse) =>
         warehouse.name
           .toLowerCase()
           .includes(value) ||
@@ -113,41 +115,28 @@ export default function WarehousesPage() {
 
   return (
     <div className="space-y-8">
-            <div className="flex items-center justify-between">
+            <PageHeader
+  title="Warehouses"
+  description="Manage warehouses across your network."
+  action={
+    <div className="flex gap-3">
+      <Button
+        variant="secondary"
+        onClick={loadWarehouses}
+      >
+        <RefreshCw size={18} />
+        <span className="ml-2">Refresh</span>
+      </Button>
 
-        <div>
-
-          <h1 className="text-5xl font-bold">
-            Warehouses
-          </h1>
-
-          <p className="mt-2 text-lg text-zinc-400">
-            Manage warehouses across your network.
-          </p>
-
-        </div>
-
-        <div className="flex gap-3">
-
-          <button
-            onClick={loadWarehouses}
-            className="flex items-center gap-2 rounded-xl border border-zinc-700 px-5 py-3 hover:border-zinc-500"
-          >
-            <RefreshCw size={18} />
-            Refresh
-          </button>
-
-          <button
-            onClick={() => setOpenCreate(true)}
-            className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 hover:bg-blue-700"
-          >
-            <Plus size={18} />
-            New Warehouse
-          </button>
-
-        </div>
-
-      </div>
+      <Button
+        onClick={() => setOpenCreate(true)}
+      >
+        <Plus size={18} />
+        <span className="ml-2">New Warehouse</span>
+      </Button>
+    </div>
+  }
+/>
 
       <input
         value={search}
@@ -156,8 +145,7 @@ export default function WarehousesPage() {
         className="w-96 rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 outline-none focus:border-blue-500"
       />
 
-      <div className="overflow-hidden rounded-2xl border border-zinc-800">
-
+<Card className="overflow-hidden p-0">
         <table className="w-full">
 
           <thead className="bg-zinc-900">
@@ -199,8 +187,7 @@ export default function WarehousesPage() {
 
             ) : (
 
-              filteredWarehouses.map((warehouse: any) => (
-
+filteredWarehouses.map((warehouse) => (
                 <tr
                   key={warehouse.id}
                   className="border-t border-zinc-800 hover:bg-zinc-900/40"
@@ -209,7 +196,7 @@ export default function WarehousesPage() {
 
                     <div className="flex items-center gap-2">
 
-                      <Warehouse size={16} />
+                      <WarehouseIcon size={16} />
 
                       {warehouse.name}
 
@@ -245,11 +232,7 @@ export default function WarehousesPage() {
 
                     <div className="flex justify-center gap-4">
 
-                      <button
-                        className="text-zinc-400 hover:text-white"
-                      >
-                        <Eye size={18} />
-                      </button>
+                      
 
                       <button
                         onClick={() => {
@@ -288,7 +271,7 @@ export default function WarehousesPage() {
 
         </table>
 
-      </div>
+      </Card>
             <WarehouseFormModal
         open={openCreate}
         onClose={() => setOpenCreate(false)}

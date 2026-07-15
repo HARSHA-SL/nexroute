@@ -1,7 +1,6 @@
 import {
   Bell,
   Moon,
-  Plus,
   Search,
   ChevronDown,
 } from "lucide-react";

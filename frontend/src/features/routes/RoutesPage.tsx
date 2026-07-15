@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { Eye, Pencil, RefreshCw, Trash2, Truck } from "lucide-react";
-
+import Card from "@/components/ui/Card";
+import Badge from "@/components/ui/Badge";
+import Button from "@/components/ui/Button";
+import PageHeader from "@/components/ui/PageHeader";
+import type { Route } from "@/types/route";
 import { routesService } from "@/services/routes.service";
 import RouteDetailsModal from "./RouteDetailsModal";
 export default function RoutesPage() {
-  const [routes, setRoutes] = useState<any[]>([]);
-  const [search, setSearch] = useState("");
-  const [selectedRoute, setSelectedRoute] = useState<any>(null);
+const [routes, setRoutes] = useState<Route[]>([]);  
+const [search, setSearch] = useState("");
+  const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
   const [openDetails, setOpenDetails] = useState(false);
 
   async function loadRoutes() {
@@ -42,27 +46,19 @@ export default function RoutesPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-5xl font-bold">Routes</h1>
-
-          <p className="mt-2 text-lg text-zinc-400">
-            Manage delivery routes across your fleet.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={loadRoutes}
-            className="flex items-center gap-2 rounded-xl border border-zinc-700 px-5 py-3 transition hover:border-zinc-500"
-          >
-            <RefreshCw size={18} />
-            Refresh
-          </button>
-
-          
-        </div>
-      </div>
+      <PageHeader
+  title="Routes"
+  description="Manage delivery routes across your fleet."
+  action={
+    <Button
+      variant="secondary"
+      onClick={loadRoutes}
+    >
+      <RefreshCw size={18} />
+      <span className="ml-2">Refresh</span>
+    </Button>
+  }
+/>
 
       {/* Search */}
       <div>
@@ -75,8 +71,7 @@ export default function RoutesPage() {
       </div>
 
       {/* Table */}
-      <div className="overflow-hidden rounded-2xl border border-zinc-800">
-        <table className="w-full">
+<Card className="overflow-hidden p-0">        <table className="w-full">
           <thead className="bg-zinc-900">
             <tr className="text-left text-zinc-400">
               <th className="px-6 py-5">Route</th>
@@ -101,7 +96,7 @@ export default function RoutesPage() {
                 </td>
               </tr>
             ) : (
-              filteredRoutes.map((route: any) => (
+              filteredRoutes.map((route) => (
                 <tr
                   key={route.route_id}
                   className="border-t border-zinc-800 hover:bg-zinc-900/40"
@@ -126,19 +121,7 @@ export default function RoutesPage() {
                   <td>{route.estimated_duration_minutes} min</td>
 
                   <td>
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                        route.status === "COMPLETED"
-                          ? "bg-green-500/20 text-green-400"
-                          : route.status === "IN_PROGRESS"
-                          ? "bg-blue-500/20 text-blue-400"
-                          : route.status === "PLANNED"
-                          ? "bg-yellow-500/20 text-yellow-400"
-                          : "bg-red-500/20 text-red-400"
-                      }`}
-                    >
-                      {route.status}
-                    </span>
+                    <Badge status={route.status} />
                   </td>
 
                   <td>
@@ -173,7 +156,7 @@ export default function RoutesPage() {
             )}
           </tbody>
         </table>
-      </div>
+      </Card>
             
 
       <RouteDetailsModal
@@ -197,3 +180,4 @@ export default function RoutesPage() {
     </div>
   );
 }
+

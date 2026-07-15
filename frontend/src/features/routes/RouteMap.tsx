@@ -52,6 +52,8 @@ export default function RouteMap({
     useEffect(() => {
   async function loadRoute() {
     try {
+      console.log("Stops:", stops);
+console.log("Stops count:", stops.length);
       const coordinates: [number, number][] = [
         [
           warehouse.longitude,
@@ -65,7 +67,8 @@ export default function RouteMap({
       ];
 
       const data = await getDrivingRoute(coordinates);
-
+      console.log("Coordinates sent:", coordinates);
+console.log("ORS response:", data);
       const points =
         data.features[0].geometry.coordinates.map(
           ([lng, lat]: [number, number]) => [

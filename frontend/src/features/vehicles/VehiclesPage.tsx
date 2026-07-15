@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
+import Card from "@/components/ui/Card";
+import Badge from "@/components/ui/Badge";
+import Button from "@/components/ui/Button";
+import type { Vehicle } from "@/types/vehicle";
+import PageHeader from "@/components/ui/PageHeader";
 import {
-  Eye,
   Pencil,
   Plus,
   RefreshCw,
@@ -14,14 +18,13 @@ import VehicleFormModal from "./VehicleFormModal";
 import EditVehicleModal from "./EditVehicleModal";
 
 export default function VehiclesPage() {
-  const [vehicles, setVehicles] = useState<any[]>([]);
-  const [search, setSearch] = useState("");
+const [vehicles, setVehicles] = useState<Vehicle[]>([]);  const [search, setSearch] = useState("");
 
   const [openCreate, setOpenCreate] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
 
   const [selectedVehicle, setSelectedVehicle] =
-    useState<any>(null);
+  useState<Vehicle | null>(null);
 
   async function loadVehicles() {
     try {
@@ -38,7 +41,9 @@ export default function VehiclesPage() {
     }
   }
 
-  async function createVehicle(vehicle: any) {
+  async function createVehicle(
+  vehicle: Omit<Vehicle, "id">
+) {
     try {
       await vehiclesService.createVehicle(vehicle);
 
@@ -53,7 +58,11 @@ export default function VehiclesPage() {
     }
   }
 
-  async function updateVehicle(vehicle: any) {
+  async function updateVehicle(
+  vehicle: Omit<Vehicle, "id">
+) {
+    if (!selectedVehicle) return;
+
     try {
       await vehiclesService.updateVehicle(
         selectedVehicle.id,
@@ -96,7 +105,7 @@ export default function VehiclesPage() {
     const value = search.toLowerCase();
 
     return vehicles.filter(
-      (vehicle: any) =>
+      (vehicle: Vehicle) =>
         vehicle.vehicle_number
           .toLowerCase()
           .includes(value) ||
@@ -111,41 +120,30 @@ export default function VehiclesPage() {
 
   return (
     <div className="space-y-8">
-            <div className="flex items-center justify-between">
+            <PageHeader
+  title="Vehicles"
+  description="Manage your fleet vehicles."
+  action={
+    <div className="flex gap-3">
 
-        <div>
+      <Button
+        variant="secondary"
+        onClick={loadVehicles}
+      >
+        <RefreshCw size={18} />
+        <span className="ml-2">Refresh</span>
+      </Button>
 
-          <h1 className="text-5xl font-bold">
-            Vehicles
-          </h1>
+      <Button
+        onClick={() => setOpenCreate(true)}
+      >
+        <Plus size={18} />
+        <span className="ml-2">New Vehicle</span>
+      </Button>
 
-          <p className="mt-2 text-lg text-zinc-400">
-            Manage your fleet vehicles.
-          </p>
-
-        </div>
-
-        <div className="flex gap-3">
-
-          <button
-            onClick={loadVehicles}
-            className="flex items-center gap-2 rounded-xl border border-zinc-700 px-5 py-3 hover:border-zinc-500"
-          >
-            <RefreshCw size={18} />
-            Refresh
-          </button>
-
-          <button
-            onClick={() => setOpenCreate(true)}
-            className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 hover:bg-blue-700"
-          >
-            <Plus size={18} />
-            New Vehicle
-          </button>
-
-        </div>
-
-      </div>
+    </div>
+  }
+/>
 
       <input
         value={search}
@@ -154,8 +152,7 @@ export default function VehiclesPage() {
         className="w-96 rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 outline-none focus:border-blue-500"
       />
 
-      <div className="overflow-hidden rounded-2xl border border-zinc-800">
-
+<Card className="overflow-hidden p-0">
         <table className="w-full">
 
           <thead className="bg-zinc-900">
@@ -197,8 +194,7 @@ export default function VehiclesPage() {
 
             ) : (
 
-              filteredVehicles.map((vehicle: any) => (
-
+filteredVehicles.map((vehicle) => (
                 <tr
                   key={vehicle.id}
                   className="border-t border-zinc-800 hover:bg-zinc-900/40"
@@ -229,15 +225,7 @@ export default function VehiclesPage() {
 
                   <td>
 
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                        vehicle.status === "AVAILABLE"
-                          ? "bg-green-500/20 text-green-400"
-                          : "bg-red-500/20 text-red-400"
-                      }`}
-                    >
-                      {vehicle.status}
-                    </span>
+                    <Badge status={vehicle.status} />
 
                   </td>
 
@@ -245,11 +233,7 @@ export default function VehiclesPage() {
 
                     <div className="flex justify-center gap-4">
 
-                      <button
-                        className="text-zinc-400 hover:text-white"
-                      >
-                        <Eye size={18} />
-                      </button>
+                      
 
                       <button
                         onClick={() => {
@@ -284,7 +268,7 @@ export default function VehiclesPage() {
 
         </table>
 
-      </div>
+      </Card>
             <VehicleFormModal
         open={openCreate}
         onClose={() => setOpenCreate(false)}
