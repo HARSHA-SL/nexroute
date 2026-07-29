@@ -2,13 +2,18 @@ from app.db.session import SessionLocal
 from app.models.driver import Driver
 from app.models.vehicle import Vehicle
 from app.models.delivery import Delivery
-
+from app.models.route_stop import RouteStop
+from app.models.route import Route
 db = SessionLocal()
 
-# Clear existing data
+# Clear existing data (child tables first)
+db.query(RouteStop).delete()
+db.query(Route).delete()
 db.query(Delivery).delete()
 db.query(Driver).delete()
 db.query(Vehicle).delete()
+
+db.commit()
 
 # Vehicles
 vehicles = [
