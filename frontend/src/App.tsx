@@ -1,5 +1,5 @@
 import { test } from "@/lib/test";
-
+import { Toaster } from "sonner";
 function App() {
   return (
     <div
@@ -18,5 +18,13 @@ function App() {
     </div>
   );
 }
+<>
+  <App />
+  <Toaster
+    richColors
+    position="top-right"
+    closeButton
+  />
+</>
 
 export default App;

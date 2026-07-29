@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { routesService } from "@/services/routes.service";
 import RouteMap from "./RouteMap";
+import { toast } from "sonner";
 import {
   X,
   MapPin,
@@ -30,11 +31,11 @@ async function handleStartRoute() {
     setStarting(true);
 
     await routesService.startRoute(route.route_id);
-
+    toast.success("Route started successfully.");
     route.status = "IN_PROGRESS";
   } catch (err) {
     console.error(err);
-    alert("Unable to start route.");
+    toast.error("Unable to start route.");
   } finally {
     setStarting(false);
   }
@@ -43,40 +44,42 @@ async function handleStartRoute() {
 async function handleArrive(stopId: number) {
   try {
     await routesService.arriveAtStop(stopId);
-
+    toast.success("Arrived at delivery stop.");
     await onRefresh();
   } catch (err) {
     console.error(err);
-    alert("Unable to arrive at stop.");
+    toast.error("Unable to arrive at stop.");
   }
 }
 async function handleDeliver(stopId: number) {
   try {
     await routesService.deliverPackage(stopId);
-
+    toast.success("Package delivered successfully.");
     await onRefresh();
   } catch (err) {
     console.error(err);
-    alert("Unable to deliver package.");
+    toast.error("Unable to deliver package.");
   }
 }
 async function handleCompleteRoute() {
   try {
     await routesService.completeRoute(route.route_id);
 
+    toast.success("Route completed successfully.");
+
     await onRefresh();
+
+    onClose();
   } catch (err) {
     console.error(err);
-    alert("Unable to complete route.");
+    toast.error("Unable to complete route.");
   }
 }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-      <div className="w-full max-w-4xl rounded-2xl border border-zinc-800 bg-zinc-900 shadow-2xl">
-
-        <div className="flex items-center justify-between border-b border-zinc-800 px-8 py-6">
-
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+    <div className="w-full max-w-6xl max-h-[92vh] overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900 shadow-2xl">
+<div className="sticky top-0 z-20 flex items-center justify-between border-b border-zinc-800 bg-zinc-900 px-8 py-6">
           <div>
             <h2 className="text-3xl font-bold">
               Route #{route.route_id}
@@ -89,15 +92,13 @@ async function handleCompleteRoute() {
 
           <button
             onClick={onClose}
-            className="rounded-lg border border-zinc-700 p-2 hover:border-zinc-500"
-          >
+className="rounded-xl border border-zinc-700 p-2 transition-all hover:bg-red-600 hover:border-red-600"          >
             <X size={22} />
           </button>
 
         </div>
 
-        <div className="space-y-8 p-8">
-          <div className="grid grid-cols-2 gap-6">
+<div className="max-h-[calc(92vh-92px)] overflow-y-auto space-y-8 p-8">          <div className="grid grid-cols-2 gap-6">
             <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-5">
               <div className="mb-3 flex items-center gap-2 text-blue-400">
                 <User size={18} />

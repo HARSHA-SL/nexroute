@@ -8,7 +8,11 @@ import {
 } from "react-leaflet";
 
 import "leaflet/dist/leaflet.css";
-
+import {
+  warehouseIcon,
+  stopIcon,
+  truckIcon,
+} from "@/utils/mapIcons";
 import L from "leaflet";
 import { useEffect, useState } from "react";
 import { getDrivingRoute } from "@/services/openRoute.service";
@@ -31,9 +35,10 @@ function FitBounds({
   const map = useMap();
 
   if (routePoints.length > 0) {
-    map.fitBounds(routePoints, {
-      padding: [50, 50],
-    });
+    map.flyToBounds(routePoints, {
+  padding: [60, 60],
+  duration: 1.5,
+});
   }
 
   return null;
@@ -49,6 +54,7 @@ export default function RouteMap({
   stops,
 }: Props) {
     const [roadRoute, setRoadRoute] = useState<[number, number][]>([]);
+const [truckPosition, setTruckPosition] = useState<[number, number] | null>(null);
     useEffect(() => {
   async function loadRoute() {
     try {
@@ -78,6 +84,10 @@ console.log("ORS response:", data);
         );
 
       setRoadRoute(points);
+
+if (points.length > 0) {
+  setTruckPosition(points[0]);
+}
     } catch (err) {
       console.error(err);
     }
@@ -85,6 +95,23 @@ console.log("ORS response:", data);
 
   loadRoute();
 }, [warehouse, stops]);
+useEffect(() => {
+  if (roadRoute.length === 0) return;
+
+  let currentIndex = 0;
+
+  const interval = setInterval(() => {
+    currentIndex++;
+
+    if (currentIndex >= roadRoute.length) {
+      currentIndex = 0;
+    }
+
+    setTruckPosition(roadRoute[currentIndex]);
+  }, 100);
+
+  return () => clearInterval(interval);
+}, [roadRoute]);
     const routePoints: [number, number][] = [
   [warehouse.latitude, warehouse.longitude],
   ...stops.map((stop) => [
@@ -100,33 +127,50 @@ console.log("ORS response:", data);
       ]}
       zoom={13}
       style={{
-        height: "350px",
+        height: "450px",
         width: "100%",
         borderRadius: "16px",
       }}
     >
       <TileLayer
-        attribution="© OpenStreetMap contributors"
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
+  attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
+  url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+/>
 
       <Marker
-        position={[
-          warehouse.latitude,
-          warehouse.longitude,
-        ]}
-      >
-        <Popup>
-          {warehouse.name}
-        </Popup>
-      </Marker>
+  icon={warehouseIcon}
+  position={[
+    warehouse.latitude,
+    warehouse.longitude,
+  ]}
+>
+  <Popup>
+  <div className="min-w-[180px]">
+    <h3 className="font-bold text-yellow-500">
+      🏭 {warehouse.name}
+    </h3>
+
+    <p className="text-sm mt-2">
+      Central Distribution Hub
+    </p>
+  </div>
+</Popup>
+</Marker>
+
+{truckPosition && (
+  <Marker
+    icon={truckIcon}
+    position={truckPosition}
+  />
+)}
       {stops.map((stop) => (
   <Marker
     key={stop.stop_id}
+    icon={stopIcon(stop.stop_order)}
     position={[
       stop.latitude,
       stop.longitude,
-    ]}
+    ] as [number, number]}
   >
     <Popup>
       <strong>
@@ -147,10 +191,15 @@ console.log("ORS response:", data);
   }
   pathOptions={{
     color: "#2563eb",
-    weight: 5,
+    weight: 8,
+    opacity: 0.95,
+    lineCap: "round",
+    lineJoin: "round",
+    dashArray: "12 8",
   }}
 />
 <FitBounds routePoints={routePoints} />
     </MapContainer>
   );
 }
+
