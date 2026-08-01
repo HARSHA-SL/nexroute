@@ -11,7 +11,7 @@ import {
   Warehouse as WarehouseIcon,
   MapPin,
 } from "lucide-react";
-
+import { toast } from "sonner";
 import api from "@/api/axios";
 import { warehousesService } from "@/services/warehouses.service";
 
@@ -47,13 +47,13 @@ const [warehouses, setWarehouses] = useState<Warehouse[]>([]);  const [search, s
       await api.post("/warehouses", warehouse);
 
       await loadWarehouses();
-
+      toast.success("Warehouse created successfully.");
       setOpenCreate(false);
     } catch (err: any) {
-      alert(
-        err.response?.data?.detail ??
-          "Unable to create warehouse."
-      );
+      toast.error(
+  err.response?.data?.detail ??
+  "Unable to create warehouse."
+);
     }
   }
 
@@ -69,13 +69,13 @@ const [warehouses, setWarehouses] = useState<Warehouse[]>([]);  const [search, s
       await loadWarehouses();
 
       setOpenEdit(false);
-
+      toast.success("Warehouse updated successfully.");
       setSelectedWarehouse(null);
     } catch (err: any) {
-      alert(
-        err.response?.data?.detail ??
-        "Unable to update warehouse."
-      );
+      toast.error(
+  err.response?.data?.detail ??
+  "Unable to update warehouse."
+);
   }
 }
 
@@ -87,11 +87,12 @@ const [warehouses, setWarehouses] = useState<Warehouse[]>([]);  const [search, s
     await warehousesService.deleteWarehouse(id);
 
     await loadWarehouses();
+    toast.success("Warehouse deleted successfully.");
   } catch (err: any) {
-    alert(
-      err.response?.data?.detail ??
-      "Unable to delete warehouse."
-    );
+    toast.error(
+  err.response?.data?.detail ??
+  "Unable to delete warehouse."
+);
   }
 }
 

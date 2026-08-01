@@ -12,7 +12,7 @@ import {
   Trash2,
   Star,
 } from "lucide-react";
-
+import { toast } from "sonner";
 import { driversService } from "@/services/drivers.service";
 import DriverFormModal from "./components/DriverFormModal";
 
@@ -26,6 +26,8 @@ const [openEdit, setOpenEdit] = useState(false);
 
 const [selectedDriver, setSelectedDriver] =
   useState<Driver | null>(null);
+
+const [loading, setLoading] = useState(false);
   async function loadDrivers() {
     try {
       const data = await driversService.getAllDrivers();
@@ -41,25 +43,32 @@ const [selectedDriver, setSelectedDriver] =
   }
 
 async function createDriver(driver: Omit<Driver, "id">) {
-  try {
+  setLoading(true);
+
+try {
     await driversService.createDriver(driver);
 
     await loadDrivers();
 
     setOpenCreate(false);
 
-    alert("Driver created successfully.");
+    toast.success("Driver created successfully.");
   } catch (err: any) {
-    alert(
-      err.response?.data?.detail ??
-      "Unable to create driver."
-    );
+    toast.error(
+  err.response?.data?.detail ??
+  "Unable to create driver."
+);
   }
+  finally {
+  setLoading(false);
 }
+}
+
 async function updateDriver(
   id: number,
   driver: Omit<Driver, "id">
 ) {
+  setLoading(true);
   try {
     await driversService.updateDriver(id, driver);
 
@@ -67,13 +76,16 @@ async function updateDriver(
 
     setOpenEdit(false);
 
-    alert("Driver updated successfully.");
+    toast.success("Driver updated successfully.");
   } catch (err: any) {
-    alert(
-      err.response?.data?.detail ??
-      "Unable to update driver."
-    );
+    toast.error(
+  err.response?.data?.detail ??
+  "Unable to update driver."
+);
   }
+  finally {
+  setLoading(false);
+}
 }
 
 async function deleteDriver(id: number) {
@@ -82,19 +94,22 @@ async function deleteDriver(id: number) {
   );
 
   if (!confirmed) return;
-
+  setLoading(true);
   try {
     await driversService.deleteDriver(id);
 
     await loadDrivers();
 
-    alert("Driver deleted successfully.");
+    toast.success("Driver deleted successfully.");
   } catch (err: any) {
-    alert(
-      err?.response?.data?.detail ??
-      "Unable to delete driver."
-    );
+    toast.error(
+  err.response?.data?.detail ??
+  "Unable to delete driver."
+);
   }
+  finally {
+  setLoading(false);
+}
 }
 
   useEffect(() => {
@@ -120,12 +135,25 @@ async function deleteDriver(id: number) {
     <div className="flex gap-3">
 
       <Button
-        variant="secondary"
-        onClick={loadDrivers}
-      >
-        <RefreshCw size={18} />
-        <span className="ml-2">Refresh</span>
-      </Button>
+  variant="secondary"
+  disabled={loading}
+  onClick={async () => {
+    setLoading(true);
+
+    await loadDrivers();
+
+    setLoading(false);
+  }}
+>
+  <RefreshCw
+    size={18}
+    className={loading ? "animate-spin" : ""}
+  />
+
+  <span className="ml-2">
+    {loading ? "Refreshing..." : "Refresh"}
+  </span>
+</Button>
 
       <Button
         onClick={() => setOpenCreate(true)}

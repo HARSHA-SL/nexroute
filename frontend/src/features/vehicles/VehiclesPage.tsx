@@ -11,7 +11,7 @@ import {
   Trash2,
   Truck,
 } from "lucide-react";
-
+import { toast } from "sonner";
 import { vehiclesService } from "@/services/vehicles.service";
 
 import VehicleFormModal from "./VehicleFormModal";
@@ -51,10 +51,10 @@ const [vehicles, setVehicles] = useState<Vehicle[]>([]);  const [search, setSear
 
       setOpenCreate(false);
     } catch (err: any) {
-      alert(
-        err.response?.data?.detail ??
-          "Unable to create vehicle."
-      );
+      toast.error(
+  err.response?.data?.detail ??
+  "Unable to create vehicle."
+);
     }
   }
 
@@ -75,10 +75,10 @@ const [vehicles, setVehicles] = useState<Vehicle[]>([]);  const [search, setSear
 
       setSelectedVehicle(null);
     } catch (err: any) {
-      alert(
-        err.response?.data?.detail ??
-          "Unable to update vehicle."
-      );
+      toast.error(
+  err.response?.data?.detail ??
+  "Unable to update vehicle."
+);
     }
   }
 
@@ -90,10 +90,10 @@ const [vehicles, setVehicles] = useState<Vehicle[]>([]);  const [search, setSear
 
       await loadVehicles();
     } catch (err: any) {
-      alert(
-        err.response?.data?.detail ??
-          "Unable to delete vehicle."
-      );
+      toast.error(
+  err.response?.data?.detail ??
+  "Unable to delete vehicle."
+);
     }
   }
 
