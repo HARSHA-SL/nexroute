@@ -21,3 +21,4 @@ class Vehicle(Base):
     current_longitude = Column(Float)
 
     status = Column(String(30), default="AVAILABLE")
+    
