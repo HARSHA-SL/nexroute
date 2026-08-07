@@ -7,17 +7,18 @@ import { router } from "./app/router/router";
 
 import "leaflet/dist/leaflet.css";
 import "./index.css";
+import { AuthProvider } from "./contexts/AuthContext";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <>
-      <RouterProvider router={router} />
+  <AuthProvider>
+    <Toaster
+      richColors
+      position="top-right"
+      closeButton
+    />
 
-      <Toaster
-        richColors
-        position="top-right"
-        closeButton
-      />
-    </>
-  </React.StrictMode>
+    <RouterProvider router={router} />
+  </AuthProvider>
+</React.StrictMode>
 );
