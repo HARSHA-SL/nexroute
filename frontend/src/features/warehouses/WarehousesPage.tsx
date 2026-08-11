@@ -44,8 +44,7 @@ const [warehouses, setWarehouses] = useState<Warehouse[]>([]);  const [search, s
 
   async function createWarehouse(warehouse: Omit<Warehouse, "id">) {
     try {
-      await api.post("/warehouses", warehouse);
-
+await warehousesService.createWarehouse(warehouse);
       await loadWarehouses();
       toast.success("Warehouse created successfully.");
       setOpenCreate(false);

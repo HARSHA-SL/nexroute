@@ -41,21 +41,20 @@ export default function DriverFormModal({
 
     try {
       const payload = {
-  ...form,
-  shift_start: form.shift_start
-    ? new Date(form.shift_start).toISOString()
-    : null,
+        ...form,
 
-  shift_end: form.shift_end
-    ? new Date(form.shift_end).toISOString()
-    : null,
-};
+        shift_start: form.shift_start
+          ? new Date(form.shift_start).toISOString()
+          : null,
 
-console.log("Sending Payload:", payload);
+        shift_end: form.shift_end
+          ? new Date(form.shift_end).toISOString()
+          : null,
+      };
 
-await onSubmit(payload);
+      console.log("Sending Payload:", payload);
 
-      onClose();
+      await onSubmit(payload);
 
       setForm({
         name: "",
@@ -68,134 +67,307 @@ await onSubmit(payload);
         current_longitude: 0,
         status: "AVAILABLE",
       });
-   } catch (err: any) {
-   console.log(JSON.stringify(err.response?.data, null, 2));
-    console.error(err);
-} finally {
-    setLoading(false);
-}
+
+      onClose();
+    } catch (err: any) {
+      console.error(err);
+      console.log(
+        JSON.stringify(err.response?.data, null, 2)
+      );
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
     <Dialog.Root open={open} onOpenChange={onClose}>
       <Dialog.Portal>
 
-        <Dialog.Overlay className="fixed inset-0 bg-black/60" />
+        <Dialog.Overlay className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm" />
 
-        <Dialog.Content className="fixed left-1/2 top-1/2 w-[560px] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-zinc-800 bg-[#15181B] p-6">
+        <Dialog.Content
+          className="
+            fixed left-1/2 top-1/2 z-50
+            max-h-[90vh] w-[560px]
+            -translate-x-1/2
+            -translate-y-1/2
+            overflow-y-auto
+            rounded-2xl
+            border border-zinc-700
+            bg-[#15181B]
+            p-7
+            text-white
+            shadow-2xl
+          "
+        >
 
-          <div className="mb-6 flex items-center justify-between">
+          {/* Header */}
 
-            <Dialog.Title className="text-2xl font-bold">
-              Add Driver
-            </Dialog.Title>
+          <div className="mb-7 flex items-center justify-between">
 
-            <Dialog.Close>
-              <X />
+            <div>
+              <Dialog.Title className="text-3xl font-bold">
+                Add Driver
+              </Dialog.Title>
+
+              <p className="mt-1 text-sm text-zinc-400">
+                Enter the driver's details below.
+              </p>
+            </div>
+
+            <Dialog.Close asChild>
+              <button
+                type="button"
+                className="rounded-lg p-2 text-zinc-400 transition hover:bg-zinc-800 hover:text-white"
+              >
+                <X size={24} />
+              </button>
             </Dialog.Close>
 
           </div>
 
           <form
             onSubmit={handleSubmit}
-            className="space-y-4"
+            className="space-y-5"
           >
 
-            <input
-              placeholder="Driver Name"
-              value={form.name}
-              onChange={(e) => update("name", e.target.value)}
-              className="w-full rounded-lg bg-zinc-900 p-3"
-              required
-            />
+            {/* Driver Name */}
 
-            <input
-              placeholder="Phone"
-              value={form.phone}
-              onChange={(e) => update("phone", e.target.value)}
-              className="w-full rounded-lg bg-zinc-900 p-3"
-              required
-            />
+            <div>
+              <label className="mb-2 block text-sm font-medium text-zinc-300">
+                Driver Name
+              </label>
 
-            <input
-              placeholder="License Number"
-              value={form.license_number}
-              onChange={(e) => update("license_number", e.target.value)}
-              className="w-full rounded-lg bg-zinc-900 p-3"
-              required
-            />
+              <input
+                type="text"
+                placeholder="e.g. name "
+                value={form.name}
+                onChange={(e) =>
+                  update("name", e.target.value)
+                }
+                className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 outline-none transition focus:border-blue-500"
+                required
+              />
+            </div>
 
-            <input
-              type="number"
-              placeholder="Rating"
-              value={form.rating}
-              onChange={(e) => update("rating", Number(e.target.value))}
-              className="w-full rounded-lg bg-zinc-900 p-3"
-            />
+            {/* Phone */}
 
-            <label className="text-sm text-zinc-400">
-              Shift Start
-            </label>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-zinc-300">
+                Phone Number
+              </label>
 
-            <input
-  type="datetime-local"
-  value={form.shift_start}
-  onChange={(e) => update("shift_start", e.target.value)}
-  className="w-full rounded-lg bg-zinc-900 p-3"
-  required
-/>
+              <input
+                type="tel"
+                placeholder="e.g. 9876543210"
+                value={form.phone}
+                onChange={(e) =>
+                  update("phone", e.target.value)
+                }
+                className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 outline-none transition focus:border-blue-500"
+                required
+              />
+            </div>
 
-            <label className="text-sm text-zinc-400">
-              Shift End
-            </label>
+            {/* License */}
 
-            <input
-  type="datetime-local"
-  value={form.shift_end}
-  onChange={(e) => update("shift_end", e.target.value)}
-  className="w-full rounded-lg bg-zinc-900 p-3"
-  required
-/>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-zinc-300">
+                Driving License Number
+              </label>
 
-            <div className="grid grid-cols-2 gap-4">
+              <input
+                type="text"
+                placeholder="e.g. KA18GG3434"
+                value={form.license_number}
+                onChange={(e) =>
+                  update(
+                    "license_number",
+                    e.target.value
+                  )
+                }
+                className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 uppercase outline-none transition focus:border-blue-500"
+                required
+              />
+            </div>
+
+            {/* Rating */}
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-zinc-300">
+                Driver Rating
+              </label>
 
               <input
                 type="number"
-                placeholder="Latitude"
-                className="rounded-lg bg-zinc-900 p-3"
-                value={form.current_latitude}
+                min="0"
+                max="5"
+                step="0.1"
+                value={form.rating}
                 onChange={(e) =>
-                  update("current_latitude", Number(e.target.value))
+                  update(
+                    "rating",
+                    Number(e.target.value)
+                  )
                 }
+                className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 outline-none transition focus:border-blue-500"
               />
 
+              <p className="mt-1 text-xs text-zinc-500">
+                Rating from 0 to 5.
+              </p>
+            </div>
+
+            {/* Shift Start */}
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-zinc-300">
+                Shift Start
+              </label>
+
               <input
-                type="number"
-                placeholder="Longitude"
-                className="rounded-lg bg-zinc-900 p-3"
-                value={form.current_longitude}
+                type="datetime-local"
+                value={form.shift_start}
                 onChange={(e) =>
-                  update("current_longitude", Number(e.target.value))
+                  update(
+                    "shift_start",
+                    e.target.value
+                  )
                 }
+                className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 outline-none transition focus:border-blue-500"
+                required
               />
+
+              <p className="mt-1 text-xs text-zinc-500">
+                When the driver's working shift begins.
+              </p>
+            </div>
+
+            {/* Shift End */}
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-zinc-300">
+                Shift End
+              </label>
+
+              <input
+                type="datetime-local"
+                value={form.shift_end}
+                onChange={(e) =>
+                  update(
+                    "shift_end",
+                    e.target.value
+                  )
+                }
+                className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 outline-none transition focus:border-blue-500"
+                required
+              />
+
+              <p className="mt-1 text-xs text-zinc-500">
+                When the driver's working shift ends.
+              </p>
+            </div>
+
+            {/* Location */}
+
+            <div>
+
+              <label className="mb-2 block text-sm font-medium text-zinc-300">
+                Current Location
+              </label>
+
+              <div className="grid grid-cols-2 gap-4">
+
+                <div>
+                  <label className="mb-1 block text-xs text-zinc-500">
+                    Latitude
+                  </label>
+
+                  <input
+                    type="number"
+                    step="any"
+                    placeholder="e.g. 12.9716"
+                    value={form.current_latitude}
+                    onChange={(e) =>
+                      update(
+                        "current_latitude",
+                        Number(e.target.value)
+                      )
+                    }
+                    className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-xs text-zinc-500">
+                    Longitude
+                  </label>
+
+                  <input
+                    type="number"
+                    step="any"
+                    placeholder="e.g. 77.5946"
+                    value={form.current_longitude}
+                    onChange={(e) =>
+                      update(
+                        "current_longitude",
+                        Number(e.target.value)
+                      )
+                    }
+                    className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 outline-none focus:border-blue-500"
+                  />
+                </div>
+
+              </div>
+
+              <p className="mt-1 text-xs text-zinc-500">
+                Use the driver's current GPS coordinates.
+              </p>
 
             </div>
 
-            <select
-              className="w-full rounded-lg bg-zinc-900 p-3"
-              value={form.status}
-              onChange={(e) => update("status", e.target.value)}
-            >
-              <option>AVAILABLE</option>
-              <option>ON_ROUTE</option>
-              <option>OFF_DUTY</option>
-            </select>
+            {/* Status */}
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-zinc-300">
+                Driver Status
+              </label>
+
+              <select
+                value={form.status}
+                onChange={(e) =>
+                  update("status", e.target.value)
+                }
+                className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 outline-none focus:border-blue-500"
+              >
+                <option value="AVAILABLE">
+                  Available
+                </option>
+
+                <option value="ON_ROUTE">
+                  On Route
+                </option>
+
+                <option value="OFF_DUTY">
+                  Off Duty
+                </option>
+              </select>
+
+              <p className="mt-1 text-xs text-zinc-500">
+                Current operational status of the driver.
+              </p>
+            </div>
+
+            {/* Submit */}
 
             <button
+              type="submit"
               disabled={loading}
-              className="w-full rounded-xl bg-blue-600 p-3 font-semibold hover:bg-blue-700"
+              className="w-full rounded-xl bg-blue-600 p-3.5 font-semibold transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {loading ? "Creating..." : "Create Driver"}
+              {loading
+                ? "Creating Driver..."
+                : "Create Driver"}
             </button>
 
           </form>

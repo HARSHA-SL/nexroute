@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { Settings as SettingsIcon } from "lucide-react";
 
 import ProfileCard from "./components/ProfileCard";
 import AppearanceSettings from "./components/AppearanceSettings";
@@ -19,11 +20,9 @@ export default function SettingsPage() {
   const [settings, setSettings] =
     useState<Settings | null>(null);
 
-  const [loading, setLoading] =
-    useState(true);
+  const [loading, setLoading] = useState(true);
 
-  const [saving, setSaving] =
-    useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -31,6 +30,8 @@ export default function SettingsPage() {
 
   async function loadSettings() {
     try {
+      setLoading(true);
+
       const data = await getSettings();
 
       setSettings(data);
@@ -68,51 +69,109 @@ export default function SettingsPage() {
     }
   }
 
-  if (loading)
+  if (loading) {
     return (
-      <div className="text-white">
-        Loading...
+      <div className="flex min-h-[400px] items-center justify-center">
+        <div className="text-center">
+
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/10">
+            <SettingsIcon
+              size={24}
+              className="animate-pulse text-blue-400"
+            />
+          </div>
+
+          <p className="text-zinc-400">
+            Loading settings...
+          </p>
+
+        </div>
       </div>
     );
+  }
 
-  if (!settings) return null;
+  if (!settings) {
+    return (
+      <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-10 text-center">
+
+        <SettingsIcon
+          size={32}
+          className="mx-auto mb-3 text-zinc-500"
+        />
+
+        <p className="text-zinc-400">
+          Settings could not be loaded.
+        </p>
+
+        <button
+          type="button"
+          onClick={loadSettings}
+          className="mt-4 rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+        >
+          Try Again
+        </button>
+
+      </div>
+    );
+  }
 
   return (
-  <div className="space-y-8">
+    <div className="space-y-8">
 
-    <h1 className="text-4xl font-bold text-white">
-      Settings
-    </h1>
+      {/* Header */}
 
-    <ProfileCard settings={settings} />
+      <div>
+        <h1 className="text-4xl font-bold text-white">
+          Settings
+        </h1>
 
-    <div className="grid gap-6 lg:grid-cols-2">
-      <AppearanceSettings
-        settings={settings}
-        setSettings={setSettings}
-      />
+        <p className="mt-2 text-zinc-400">
+          Manage your account, application preferences,
+          notifications and security.
+        </p>
+      </div>
 
-      <NotificationSettings
-        settings={settings}
-        setSettings={setSettings}
-      />
+      {/* Profile */}
 
-      <SecuritySettings
-        settings={settings}
-        setSettings={setSettings}
-      />
+      <ProfileCard settings={settings} />
 
-      <SystemSettings
-        settings={settings}
-        setSettings={setSettings}
-      />
+      {/* Settings Sections */}
+
+      <div className="grid gap-6 lg:grid-cols-2">
+
+        <AppearanceSettings
+          settings={settings}
+          setSettings={setSettings}
+        />
+
+        <NotificationSettings
+          settings={settings}
+          setSettings={setSettings}
+        />
+
+        <SecuritySettings
+          settings={settings}
+          setSettings={setSettings}
+        />
+
+        <SystemSettings
+          settings={settings}
+          setSettings={setSettings}
+        />
+
+      </div>
+
+      {/* Save */}
+
+      <div className="flex justify-end border-t border-zinc-800 pt-6">
+
+        <SaveSettingsButton
+          loading={saving}
+          onSave={save}
+        />
+
+      </div>
+
     </div>
-
-    <SaveSettingsButton
-      loading={saving}
-      onSave={save}
-    />
-
-  </div>
-);
+  );
 }

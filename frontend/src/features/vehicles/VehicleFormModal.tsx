@@ -18,9 +18,7 @@ export default function VehicleFormModal({
   const [form, setForm] = useState({
     vehicle_number: "",
     vehicle_type: "",
-    fuel_type: "",
     capacity_weight: 0,
-    capacity_volume: 0,
     status: "AVAILABLE",
   });
 
@@ -31,27 +29,26 @@ export default function VehicleFormModal({
     }));
   }
 
-  async function handleSubmit(
-    e: React.FormEvent
-  ) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
     setLoading(true);
 
     try {
-      await onSubmit(form);
-
-      onClose();
+      await onSubmit({
+        ...form,
+        capacity_weight: Number(form.capacity_weight),
+      });
 
       setForm({
         vehicle_number: "",
         vehicle_type: "",
-        fuel_type: "",
         capacity_weight: 0,
-        capacity_volume: 0,
         status: "AVAILABLE",
       });
-    } catch (err: any) {
+
+      onClose();
+    } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
@@ -59,67 +56,75 @@ export default function VehicleFormModal({
   }
 
   return (
-    <Dialog.Root
-      open={open}
-      onOpenChange={onClose}
-    >
+    <Dialog.Root open={open} onOpenChange={onClose}>
       <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-40 bg-black/60" />
 
-        <Dialog.Overlay className="fixed inset-0 bg-black/60" />
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[560px] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-zinc-800 bg-[#15181B] p-6 text-white shadow-2xl">
 
-        <Dialog.Content className="fixed left-1/2 top-1/2 w-[560px] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-zinc-800 bg-[#15181B] p-6">
-
+          {/* Header */}
           <div className="mb-6 flex items-center justify-between">
-
             <Dialog.Title className="text-2xl font-bold">
               Add Vehicle
             </Dialog.Title>
 
-            <Dialog.Close>
-              <X />
+            <Dialog.Close asChild>
+              <button
+                type="button"
+                className="rounded-lg p-2 text-zinc-400 transition hover:bg-zinc-800 hover:text-white"
+              >
+                <X size={22} />
+              </button>
             </Dialog.Close>
-
           </div>
 
-          <form
-            onSubmit={handleSubmit}
-            className="space-y-4"
-          >
-            <input
-              placeholder="Vehicle Number"
-              value={form.vehicle_number}
-              onChange={(e) =>
-                update("vehicle_number", e.target.value)
-              }
-              className="w-full rounded-lg bg-zinc-900 p-3"
-              required
-            />
+          <form onSubmit={handleSubmit} className="space-y-5">
 
-            <input
-              placeholder="Vehicle Type"
-              value={form.vehicle_type}
-              onChange={(e) =>
-                update("vehicle_type", e.target.value)
-              }
-              className="w-full rounded-lg bg-zinc-900 p-3"
-              required
-            />
+            {/* Vehicle Number */}
+            <div>
+              <label className="mb-2 block text-sm font-medium text-zinc-300">
+                Vehicle Number
+              </label>
 
-            <input
-              placeholder="Fuel Type"
-              value={form.fuel_type}
-              onChange={(e) =>
-                update("fuel_type", e.target.value)
-              }
-              className="w-full rounded-lg bg-zinc-900 p-3"
-              required
-            />
+              <input
+                type="text"
+                value={form.vehicle_number}
+                onChange={(e) =>
+                  update("vehicle_number", e.target.value.toUpperCase())
+                }
+                placeholder="Example: KA01AB1234"
+                className="w-full rounded-lg border border-zinc-800 bg-zinc-900 p-3 text-white outline-none placeholder:text-zinc-600 focus:border-blue-500"
+                required
+              />
+            </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            {/* Vehicle Type */}
+            <div>
+              <label className="mb-2 block text-sm font-medium text-zinc-300">
+                Vehicle Type
+              </label>
+
+              <input
+                type="text"
+                value={form.vehicle_type}
+                onChange={(e) =>
+                  update("vehicle_type", e.target.value)
+                }
+                placeholder="Example: Van, Mini Truck, Truck"
+                className="w-full rounded-lg border border-zinc-800 bg-zinc-900 p-3 text-white outline-none placeholder:text-zinc-600 focus:border-blue-500"
+                required
+              />
+            </div>
+
+            {/* Capacity */}
+            <div>
+              <label className="mb-2 block text-sm font-medium text-zinc-300">
+                Capacity (kg)
+              </label>
 
               <input
                 type="number"
-                placeholder="Capacity Weight (kg)"
+                min="1"
                 value={form.capacity_weight}
                 onChange={(e) =>
                   update(
@@ -127,60 +132,47 @@ export default function VehicleFormModal({
                     Number(e.target.value)
                   )
                 }
-                className="rounded-lg bg-zinc-900 p-3"
+                placeholder="Example: 1000"
+                className="w-full rounded-lg border border-zinc-800 bg-zinc-900 p-3 text-white outline-none placeholder:text-zinc-600 focus:border-blue-500"
                 required
               />
 
-              <input
-                type="number"
-                placeholder="Capacity Volume"
-                value={form.capacity_volume}
-                onChange={(e) =>
-                  update(
-                    "capacity_volume",
-                    Number(e.target.value)
-                  )
-                }
-                className="rounded-lg bg-zinc-900 p-3"
-                required
-              />
-
+              <p className="mt-1 text-xs text-zinc-500">
+                Maximum weight the vehicle can carry.
+              </p>
             </div>
 
-            <select
-              value={form.status}
-              onChange={(e) =>
-                update("status", e.target.value)
-              }
-              className="w-full rounded-lg bg-zinc-900 p-3"
-            >
-              <option value="AVAILABLE">
-                AVAILABLE
-              </option>
+            {/* Status */}
+            <div>
+              <label className="mb-2 block text-sm font-medium text-zinc-300">
+                Vehicle Status
+              </label>
 
-              <option value="IN_TRANSIT">
-                IN_TRANSIT
-              </option>
+              <select
+                value={form.status}
+                onChange={(e) =>
+                  update("status", e.target.value)
+                }
+                className="w-full rounded-lg border border-zinc-800 bg-zinc-900 p-3 text-white outline-none focus:border-blue-500"
+              >
+                <option value="AVAILABLE">Available</option>
+                <option value="ON_ROUTE">On Route</option>
+                <option value="MAINTENANCE">Maintenance</option>
+              </select>
+            </div>
 
-              <option value="MAINTENANCE">
-                MAINTENANCE
-              </option>
-            </select>
-
+            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-xl bg-blue-600 p-3 font-semibold transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full rounded-xl bg-blue-600 p-3 font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {loading ? "Creating..." : "Create Vehicle"}
+              {loading ? "Creating Vehicle..." : "Create Vehicle"}
             </button>
 
           </form>
-
         </Dialog.Content>
-
       </Dialog.Portal>
-
     </Dialog.Root>
   );
 }

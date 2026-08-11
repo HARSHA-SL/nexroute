@@ -1,3 +1,6 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+
 import {
   Bell,
   Moon,
@@ -5,9 +8,31 @@ import {
   ChevronDown,
 } from "lucide-react";
 
+import { toast } from "sonner";
+
+import { useAuthContext } from "@/contexts/AuthContext";
+
 export default function Topbar() {
+  const { logout } = useAuthContext();
+
+  const navigate = useNavigate();
+
+  const [open, setOpen] = useState(false);
+
+  function handleLogout() {
+    logout();
+
+    setOpen(false);
+
+    toast.success("Logged out successfully.");
+
+    navigate("/login", {
+      replace: true,
+    });
+  }
+
   return (
-    <header className="flex h-20 items-center justify-between border-b border-[#2A2F36] bg-[#15181B] px-8">
+    <header className="flex h-20 items-center justify-between border-b border-[#262B34] bg-[#111417] px-8">
 
       {/* Search */}
 
@@ -29,47 +54,90 @@ export default function Topbar() {
 
       <div className="flex items-center gap-4">
 
-       
+        {/* Notifications */}
 
-        <button className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#2A2F36] bg-[#1B1F23]">
-
+        <button
+          type="button"
+          className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#2A2F36] bg-[#1B1F23] text-white transition hover:bg-[#252A31]"
+        >
           <Bell size={18} />
-
         </button>
 
-        <button className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#2A2F36] bg-[#1B1F23]">
+        {/* Theme */}
 
+        <button
+          type="button"
+          className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#2A2F36] bg-[#1B1F23] text-white transition hover:bg-[#252A31]"
+        >
           <Moon size={18} />
-
         </button>
 
-        <button className="flex items-center gap-3 rounded-xl border border-[#2A2F36] bg-[#1B1F23] px-3 py-2">
+        {/* User Menu */}
 
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#3B82F6] text-sm font-semibold">
+        <div className="relative">
 
-            H
+          <button
+            type="button"
+            onClick={() =>
+              setOpen((value) => !value)
+            }
+            className="flex items-center gap-3 rounded-xl border border-[#2A2F36] bg-[#1B1F23] px-3 py-2 text-white transition hover:bg-[#252A31]"
+          >
 
-          </div>
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#3B82F6] text-sm font-semibold">
+              H
+            </div>
 
-          <div className="text-left">
+            <div className="text-left">
 
-            <p className="text-sm font-medium">
+              <p className="text-sm font-medium">
+                Harsha
+              </p>
 
-              Harsha
+              <p className="text-xs text-[#8B949E]">
+                Admin
+              </p>
 
-            </p>
+            </div>
 
-            <p className="text-xs text-[#8B949E]">
+            <ChevronDown
+              size={16}
+              className={`transition-transform ${
+                open ? "rotate-180" : ""
+              }`}
+            />
 
-              Admin
+          </button>
 
-            </p>
+          {/* Dropdown */}
 
-          </div>
+          {open && (
+            <div className="absolute right-0 top-14 z-50 w-48 rounded-xl border border-[#2A2F36] bg-[#171B22] p-2 shadow-xl">
 
-          <ChevronDown size={16} />
+              <div className="border-b border-[#2A2F36] px-3 py-2">
 
-        </button>
+                <p className="text-sm font-medium text-white">
+                  Harsha
+                </p>
+
+                <p className="text-xs text-[#8B949E]">
+                  Administrator
+                </p>
+
+              </div>
+
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="mt-2 w-full rounded-lg px-3 py-2 text-left text-sm text-red-400 transition hover:bg-red-500/10"
+              >
+                Logout
+              </button>
+
+            </div>
+          )}
+
+        </div>
 
       </div>
 

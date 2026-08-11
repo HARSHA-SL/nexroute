@@ -12,30 +12,67 @@ import {
 import type { Notification } from "./types/notification";
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<
+    Notification[]
+  >([]);
+
+  const [loading, setLoading] = useState(true);
+
+  const [error, setError] = useState("");
+
+  async function loadNotifications() {
+    try {
+      setLoading(true);
+      setError("");
+
+      const data = await getNotifications();
+
+      setNotifications(
+        Array.isArray(data) ? data : []
+      );
+    } catch (err) {
+      console.error(err);
+
+      setError(
+        "Unable to load notifications."
+      );
+
+      setNotifications([]);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
     loadNotifications();
   }, []);
 
-  async function loadNotifications() {
-    const data = await getNotifications();
-    setNotifications(data);
-  }
-
   const unread = notifications.filter(
-    (n) => !n.is_read
+    (notification) => !notification.is_read
   ).length;
 
   const high = notifications.filter(
-    (n) => n.priority === "High"
+    (notification) =>
+      notification.priority === "High"
   ).length;
 
   return (
     <div className="space-y-6">
-      <h1 className="text-4xl font-bold text-white">
-        Notifications
-      </h1>
+
+      {/* Header */}
+
+      <div>
+        <h1 className="text-4xl font-bold text-white">
+          Notifications
+        </h1>
+
+        <p className="mt-2 text-zinc-400">
+          Monitor important events across your
+          logistics operations.
+        </p>
+      </div>
+
+      {/* Statistics */}
 
       <NotificationStats
         total={notifications.length}
@@ -43,15 +80,40 @@ export default function NotificationsPage() {
         high={high}
       />
 
+      {/* Filters */}
+
       <NotificationFilters />
 
-      {notifications.length ? (
+      {/* Content */}
+
+      {loading ? (
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-12 text-center">
+          <p className="text-zinc-400">
+            Loading notifications...
+          </p>
+        </div>
+      ) : error ? (
+        <div className="rounded-2xl border border-red-800 bg-red-500/10 p-8 text-center">
+          <p className="text-red-400">
+            {error}
+          </p>
+
+          <button
+            type="button"
+            onClick={loadNotifications}
+            className="mt-4 rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+          >
+            Try Again
+          </button>
+        </div>
+      ) : notifications.length > 0 ? (
         <NotificationList
           notifications={notifications}
         />
       ) : (
         <EmptyNotifications />
       )}
+
     </div>
   );
 }

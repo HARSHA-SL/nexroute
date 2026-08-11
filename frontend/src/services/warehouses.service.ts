@@ -16,17 +16,16 @@ export const warehousesService = {
       "/warehouses",
       warehouse
     );
+
     return response.data;
   },
 
-  async updateWarehouse(
-    id: number,
-    warehouse: any
-  ) {
+  async updateWarehouse(id: number, warehouse: any) {
     const response = await api.patch(
       `/warehouses/${id}`,
       warehouse
     );
+
     return response.data;
   },
 
@@ -34,6 +33,7 @@ export const warehousesService = {
     const response = await api.delete(
       `/warehouses/${id}`
     );
+
     return response.data;
   },
 };

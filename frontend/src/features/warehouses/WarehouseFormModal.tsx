@@ -29,17 +29,17 @@ export default function WarehouseFormModal({
     }));
   }
 
-  async function handleSubmit(
-    e: React.FormEvent
-  ) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
     setLoading(true);
 
     try {
-      await onSubmit(form);
-
-      onClose();
+      await onSubmit({
+        ...form,
+        latitude: Number(form.latitude),
+        longitude: Number(form.longitude),
+      });
 
       setForm({
         name: "",
@@ -47,105 +47,149 @@ export default function WarehouseFormModal({
         latitude: 0,
         longitude: 0,
       });
+
+      onClose();
+    } catch (err) {
+      console.error(err);
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <Dialog.Root
-      open={open}
-      onOpenChange={onClose}
-    >
+    <Dialog.Root open={open} onOpenChange={onClose}>
       <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-40 bg-black/60" />
 
-        <Dialog.Overlay className="fixed inset-0 bg-black/60" />
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[560px] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-zinc-800 bg-[#15181B] p-6 text-white shadow-2xl">
 
-        <Dialog.Content className="fixed left-1/2 top-1/2 w-[560px] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-zinc-800 bg-[#15181B] p-6">
-
+          {/* Header */}
           <div className="mb-6 flex items-center justify-between">
-
             <Dialog.Title className="text-2xl font-bold">
               Add Warehouse
             </Dialog.Title>
 
-            <Dialog.Close>
-              <X />
+            <Dialog.Close asChild>
+              <button
+                type="button"
+                className="rounded-lg p-2 text-zinc-400 transition hover:bg-zinc-800 hover:text-white"
+              >
+                <X size={22} />
+              </button>
             </Dialog.Close>
-
           </div>
 
-          <form
-            onSubmit={handleSubmit}
-            className="space-y-4"
-          >
-            <input
-              placeholder="Warehouse Name"
-              value={form.name}
-              onChange={(e) =>
-                update("name", e.target.value)
-              }
-              className="w-full rounded-lg bg-zinc-900 p-3"
-              required
-            />
+          <form onSubmit={handleSubmit} className="space-y-5">
 
-            <input
-              placeholder="Address"
-              value={form.address}
-              onChange={(e) =>
-                update("address", e.target.value)
-              }
-              className="w-full rounded-lg bg-zinc-900 p-3"
-              required
-            />
-
-            <div className="grid grid-cols-2 gap-4">
+            {/* Warehouse Name */}
+            <div>
+              <label className="mb-2 block text-sm font-medium text-zinc-300">
+                Warehouse Name
+              </label>
 
               <input
-                type="number"
-                placeholder="Latitude"
-                value={form.latitude}
+                type="text"
+                value={form.name}
                 onChange={(e) =>
-                  update(
-                    "latitude",
-                    Number(e.target.value)
-                  )
+                  update("name", e.target.value)
                 }
-                className="rounded-lg bg-zinc-900 p-3"
+                placeholder="Example: Main Warehouse"
+                className="w-full rounded-lg border border-zinc-800 bg-zinc-900 p-3 text-white outline-none placeholder:text-zinc-600 focus:border-blue-500"
                 required
               />
-
-              <input
-                type="number"
-                placeholder="Longitude"
-                value={form.longitude}
-                onChange={(e) =>
-                  update(
-                    "longitude",
-                    Number(e.target.value)
-                  )
-                }
-                className="rounded-lg bg-zinc-900 p-3"
-                required
-              />
-
             </div>
+
+            {/* Address */}
+            <div>
+              <label className="mb-2 block text-sm font-medium text-zinc-300">
+                Address
+              </label>
+
+              <input
+                type="text"
+                value={form.address}
+                onChange={(e) =>
+                  update("address", e.target.value)
+                }
+                placeholder="Example: Bangalore, Karnataka"
+                className="w-full rounded-lg border border-zinc-800 bg-zinc-900 p-3 text-white outline-none placeholder:text-zinc-600 focus:border-blue-500"
+                required
+              />
+            </div>
+
+            {/* Coordinates */}
+            <div>
+              <label className="mb-2 block text-sm font-medium text-zinc-300">
+                Location Coordinates
+              </label>
+
+              <p className="mb-3 text-xs text-zinc-500">
+                Enter the warehouse's GPS coordinates.
+              </p>
+
+              <div className="grid grid-cols-2 gap-4">
+
+                {/* Latitude */}
+                <div>
+                  <label className="mb-2 block text-xs text-zinc-400">
+                    Latitude
+                  </label>
+
+                  <input
+                    type="number"
+                    step="any"
+                    value={form.latitude}
+                    onChange={(e) =>
+                      update(
+                        "latitude",
+                        Number(e.target.value)
+                      )
+                    }
+                    placeholder="Example: 12.9716"
+                    className="w-full rounded-lg border border-zinc-800 bg-zinc-900 p-3 text-white outline-none placeholder:text-zinc-600 focus:border-blue-500"
+                    required
+                  />
+                </div>
+
+                {/* Longitude */}
+                <div>
+                  <label className="mb-2 block text-xs text-zinc-400">
+                    Longitude
+                  </label>
+
+                  <input
+                    type="number"
+                    step="any"
+                    value={form.longitude}
+                    onChange={(e) =>
+                      update(
+                        "longitude",
+                        Number(e.target.value)
+                      )
+                    }
+                    placeholder="Example: 77.5946"
+                    className="w-full rounded-lg border border-zinc-800 bg-zinc-900 p-3 text-white outline-none placeholder:text-zinc-600 focus:border-blue-500"
+                    required
+                  />
+                </div>
+
+              </div>
+            </div>
+
+            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-xl bg-blue-600 p-3 font-semibold transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full rounded-xl bg-blue-600 p-3 font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading
-                ? "Creating..."
+                ? "Creating Warehouse..."
                 : "Create Warehouse"}
             </button>
 
           </form>
-
         </Dialog.Content>
-
       </Dialog.Portal>
-
     </Dialog.Root>
   );
 }
