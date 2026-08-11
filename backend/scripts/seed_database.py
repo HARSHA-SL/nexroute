@@ -5,198 +5,272 @@ from app.db.session import SessionLocal
 from app.models.driver import Driver
 from app.models.vehicle import Vehicle
 from app.models.delivery import Delivery
-from app.models.warehouse import Warehouse
-from app.models.route import Route
 from app.models.route_stop import RouteStop
+from app.models.route import Route
+from app.models.warehouse import Warehouse
 
 
 db = SessionLocal()
 
-try:
-    # ============================================================
-    # CLEAR EXISTING SAMPLE DATA
-    # ============================================================
 
-    # Child tables first
-    db.query(RouteStop).delete()
-    db.query(Route).delete()
-    db.query(Delivery).delete()
-    db.query(Warehouse).delete()
-    db.query(Driver).delete()
-    db.query(Vehicle).delete()
+# ============================================================
+# CLEAR OLD DATA
+# ============================================================
 
-    db.commit()
+print("Clearing old data...")
 
-    # ============================================================
-    # VEHICLES
-    # ============================================================
+db.query(RouteStop).delete()
+db.query(Route).delete()
+db.query(Delivery).delete()
+db.query(Driver).delete()
+db.query(Vehicle).delete()
+db.query(Warehouse).delete()
 
-    vehicles = [
-        Vehicle(
-            vehicle_number="KA01AB1234",
-            vehicle_type="Van",
-            capacity_weight=1000,
-            status="AVAILABLE",
-        ),
-        Vehicle(
-            vehicle_number="KA02CD5678",
-            vehicle_type="Mini Truck",
-            capacity_weight=2000,
-            status="AVAILABLE",
-        ),
-    ]
+db.commit()
 
-    db.add_all(vehicles)
-    db.flush()
 
-    # ============================================================
-    # DRIVERS
-    # ============================================================
+# ============================================================
+# WAREHOUSES
+# ============================================================
 
-    drivers = [
-        Driver(
-            name="Ravi",
-            phone="9876543210",
-            status="AVAILABLE",
-        ),
-        Driver(
-            name="Anita",
-            phone="9876543211",
-            status="AVAILABLE",
-        ),
-    ]
+warehouses = [
+    Warehouse(
+        name="Bengaluru Central Hub",
+        address="Peenya Industrial Area, Bengaluru",
+        latitude=13.0280,
+        longitude=77.5197,
+    ),
 
-    db.add_all(drivers)
-    db.flush()
+    Warehouse(
+        name="Whitefield Distribution Center",
+        address="Whitefield Main Road, Bengaluru",
+        latitude=12.9698,
+        longitude=77.7499,
+    ),
+]
 
-    # ============================================================
-    # WAREHOUSE
-    # ============================================================
 
-    warehouse = Warehouse(
-        name="Main Warehouse",
-        address="Bangalore",
-        latitude=12.9716,
-        longitude=77.5946,
-    )
+db.add_all(warehouses)
+db.commit()
 
-    db.add(warehouse)
-    db.flush()
 
-    # ============================================================
-    # DELIVERIES
-    # ============================================================
+# ============================================================
+# VEHICLES
+# ============================================================
 
-    deliveries = [
-        Delivery(
-            customer_name="Customer A",
-            address="MG Road",
-            latitude=12.9750,
-            longitude=77.6050,
-            weight=120,
-            priority="HIGH",
-            status="PENDING",
-        ),
-        Delivery(
-            customer_name="Customer B",
-            address="Indiranagar",
-            latitude=12.9780,
-            longitude=77.6400,
-            weight=200,
-            priority="MEDIUM",
-            status="PENDING",
-        ),
-        Delivery(
-            customer_name="Customer C",
-            address="Whitefield",
-            latitude=12.9950,
-            longitude=77.7200,
-            weight=350,
-            priority="LOW",
-            status="PENDING",
-        ),
-    ]
+vehicles = [
+    Vehicle(
+        vehicle_number="KA01AB1234",
+        vehicle_type="Van",
+        capacity_weight=1000,
+        status="AVAILABLE",
+    ),
 
-    db.add_all(deliveries)
-    db.flush()
+    Vehicle(
+        vehicle_number="KA02CD5678",
+        vehicle_type="Mini Truck",
+        capacity_weight=2000,
+        status="AVAILABLE",
+    ),
 
-    # ============================================================
-    # ROUTE
-    # ============================================================
+    Vehicle(
+        vehicle_number="KA03EF9012",
+        vehicle_type="Truck",
+        capacity_weight=5000,
+        status="AVAILABLE",
+    ),
 
-    route_date = datetime.utcnow()
+    Vehicle(
+        vehicle_number="KA04GH3456",
+        vehicle_type="Van",
+        capacity_weight=1200,
+        status="AVAILABLE",
+    ),
 
-    route = Route(
-        driver_id=drivers[1].id,          # Anita
-        vehicle_id=vehicles[1].id,        # KA02CD5678
-        warehouse_id=warehouse.id,
-        total_distance_km=18.4,
-        estimated_duration_minutes=45,
-        status="PLANNED",
-        route_date=route_date,
-    )
+    Vehicle(
+        vehicle_number="KA05IJ7890",
+        vehicle_type="Mini Truck",
+        capacity_weight=2500,
+        status="AVAILABLE",
+    ),
+]
 
-    db.add(route)
-    db.flush()
 
-    # ============================================================
-    # ROUTE STOPS
-    #
-    # Warehouse
-    #    ↓
-    # Customer B - Indiranagar
-    #    ↓
-    # Customer C - Whitefield
-    #    ↓
-    # Customer A - MG Road
-    # ============================================================
+db.add_all(vehicles)
+db.commit()
 
-    stop_start_time = route_date + timedelta(minutes=20)
 
-    route_stops = [
-        RouteStop(
-            route_id=route.id,
-            delivery_id=deliveries[1].id,      # Customer B
-            stop_order=1,
-            planned_arrival_time=stop_start_time,
-            planned_departure_time=stop_start_time + timedelta(minutes=5),
-        ),
-        RouteStop(
-            route_id=route.id,
-            delivery_id=deliveries[2].id,      # Customer C
-            stop_order=2,
-            planned_arrival_time=stop_start_time + timedelta(minutes=20),
-            planned_departure_time=stop_start_time + timedelta(minutes=25),
-        ),
-        RouteStop(
-            route_id=route.id,
-            delivery_id=deliveries[0].id,      # Customer A
-            stop_order=3,
-            planned_arrival_time=stop_start_time + timedelta(minutes=40),
-            planned_departure_time=stop_start_time + timedelta(minutes=45),
-        ),
-    ]
+# ============================================================
+# DRIVERS
+# ============================================================
 
-    db.add_all(route_stops)
+drivers = [
+    Driver(
+        name="Ravi Kumar",
+        phone="9876543210",
+        license_number="KA01DL1001",
+        rating=4.8,
+        status="AVAILABLE",
+    ),
 
-    db.commit()
+    Driver(
+        name="Anita Sharma",
+        phone="9876543211",
+        license_number="KA01DL1002",
+        rating=4.9,
+        status="AVAILABLE",
+    ),
 
-    print("==========================================")
-    print("✅ Sample data inserted successfully!")
-    print("==========================================")
-    print(f"Warehouse : {warehouse.name}")
-    print(f"Driver    : {drivers[1].name}")
-    print(f"Vehicle   : {vehicles[1].vehicle_number}")
-    print(f"Route ID  : {route.id}")
-    print("Status    : PLANNED")
-    print("Stops     : 3")
-    print("==========================================")
+    Driver(
+        name="Rahul Singh",
+        phone="9876543212",
+        license_number="KA01DL1003",
+        rating=4.6,
+        status="AVAILABLE",
+    ),
 
-except Exception as e:
-    db.rollback()
-    print("❌ Error while seeding database:")
-    print(e)
-    raise
+    Driver(
+        name="Vikram Rao",
+        phone="9876543213",
+        license_number="KA01DL1004",
+        rating=4.7,
+        status="AVAILABLE",
+    ),
 
-finally:
-    db.close()
+    Driver(
+        name="Priya Nair",
+        phone="9876543214",
+        license_number="KA01DL1005",
+        rating=4.9,
+        status="AVAILABLE",
+    ),
+]
+
+
+db.add_all(drivers)
+db.commit()
+
+
+# ============================================================
+# DELIVERIES
+# ============================================================
+
+deliveries = [
+
+    Delivery(
+        customer_name="Customer A",
+        address="MG Road",
+        latitude=12.9750,
+        longitude=77.6050,
+        weight=120,
+        priority="HIGH",
+        status="PENDING",
+    ),
+
+    Delivery(
+        customer_name="Customer B",
+        address="Indiranagar",
+        latitude=12.9780,
+        longitude=77.6400,
+        weight=200,
+        priority="MEDIUM",
+        status="PENDING",
+    ),
+
+    Delivery(
+        customer_name="Customer C",
+        address="Whitefield",
+        latitude=12.9950,
+        longitude=77.7200,
+        weight=350,
+        priority="LOW",
+        status="PENDING",
+    ),
+
+    Delivery(
+        customer_name="Customer D",
+        address="Koramangala",
+        latitude=12.9352,
+        longitude=77.6245,
+        weight=180,
+        priority="HIGH",
+        status="PENDING",
+    ),
+
+    Delivery(
+        customer_name="Customer E",
+        address="HSR Layout",
+        latitude=12.9121,
+        longitude=77.6446,
+        weight=250,
+        priority="MEDIUM",
+        status="PENDING",
+    ),
+
+    Delivery(
+        customer_name="Customer F",
+        address="Electronic City",
+        latitude=12.8458,
+        longitude=77.6603,
+        weight=400,
+        priority="LOW",
+        status="PENDING",
+    ),
+
+    Delivery(
+        customer_name="Customer G",
+        address="Yelahanka",
+        latitude=13.1007,
+        longitude=77.5963,
+        weight=150,
+        priority="MEDIUM",
+        status="PENDING",
+    ),
+
+    Delivery(
+        customer_name="Customer H",
+        address="Hebbal",
+        latitude=13.0358,
+        longitude=77.5970,
+        weight=300,
+        priority="HIGH",
+        status="PENDING",
+    ),
+
+    Delivery(
+        customer_name="Customer I",
+        address="Jayanagar",
+        latitude=12.9250,
+        longitude=77.5938,
+        weight=220,
+        priority="MEDIUM",
+        status="PENDING",
+    ),
+
+    Delivery(
+        customer_name="Customer J",
+        address="Marathahalli",
+        latitude=12.9591,
+        longitude=77.6974,
+        weight=280,
+        priority="HIGH",
+        status="PENDING",
+    ),
+]
+
+
+db.add_all(deliveries)
+db.commit()
+
+
+db.close()
+
+print("")
+print("==========================================")
+print("  DEMO DATA CREATED SUCCESSFULLY")
+print("==========================================")
+print("Warehouses : 2")
+print("Vehicles   : 5")
+print("Drivers    : 5")
+print("Deliveries : 10")
+print("")

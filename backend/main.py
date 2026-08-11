@@ -11,6 +11,8 @@ from app.api.drivers import router as drivers_router
 from app.api.vehicles import router as vehicles_router
 from app.api.warehouses import router as warehouses_router
 from app.api.analytics import router as analytics_router
+from app.api.deliveries import router as deliveries_router
+from app.api.deliveries import router as deliveries_router
 app = FastAPI(
     title="NexRoute",
     version="1.0.0",
@@ -48,6 +50,6 @@ app.include_router(drivers_router)
 app.include_router(vehicles_router)
 app.include_router(warehouses_router)
 app.include_router(analytics_router)
+app.include_router(deliveries_router)
 app.include_router(settings_router)
 app.include_router(notifications_router)
-
