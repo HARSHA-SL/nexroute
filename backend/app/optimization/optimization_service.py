@@ -19,579 +19,1238 @@ class OptimizationService:
     @staticmethod
     def optimize(db: Session):
 
-        # =====================================================
-        # 1. GET PENDING DELIVERIES
-        # =====================================================
-
-        deliveries_db = (
-            db.query(Delivery)
-            .filter(
-                Delivery.status == "PENDING"
-            )
-            .order_by(
-                Delivery.priority.desc(),
-                Delivery.id.asc()
-            )
-            .all()
-        )
-
-        if not deliveries_db:
-            return {
-                "success": False,
-                "message": "No pending deliveries found."
-            }
-
-        # =====================================================
-        # 2. GET AVAILABLE VEHICLES
-        # =====================================================
-
-        vehicles_db = (
-            db.query(Vehicle)
-            .filter(
-                Vehicle.status == "AVAILABLE"
-            )
-            .order_by(
-                Vehicle.id.asc()
-            )
-            .all()
-        )
-
-        if not vehicles_db:
-            return {
-                "success": False,
-                "message": "No available vehicles found."
-            }
-
-        # =====================================================
-        # 3. GET AVAILABLE DRIVERS
-        # =====================================================
-
-        drivers_db = (
-            db.query(Driver)
-            .filter(
-                Driver.status == "AVAILABLE"
-            )
-            .order_by(
-                Driver.id.asc()
-            )
-            .all()
-        )
-
-        if not drivers_db:
-            return {
-                "success": False,
-                "message": "No available drivers found."
-            }
-
-        # =====================================================
-        # 4. FIND WAREHOUSE
-        # =====================================================
-
-        warehouse = (
-            db.query(Warehouse)
-            .first()
-        )
-
-        if warehouse is None:
-            return {
-                "success": False,
-                "message": "No warehouse found in database."
-            }
-
-        # =====================================================
-        # 5. PREPARE DATA
-        # =====================================================
-
-        deliveries, vehicles, drivers = (
-            ConstraintEngine.prepare_data(
-                deliveries_db,
-                vehicles_db,
-                drivers_db
-            )
-        )
-
-        if not deliveries:
-            return {
-                "success": False,
-                "message": "No valid pending deliveries found."
-            }
-
-        if not vehicles:
-            return {
-                "success": False,
-                "message": "No valid vehicles available."
-            }
-
-        if not drivers:
-            return {
-                "success": False,
-                "message": "No valid drivers available."
-            }
-
-        # We can only create as many routes as we have
-        # driver + vehicle combinations.
-
-        resource_count = min(
-            len(vehicles),
-            len(drivers)
-        )
-
-        if resource_count == 0:
-            return {
-                "success": False,
-                "message": "No driver and vehicle combinations available."
-            }
-
-        vehicles = vehicles[:resource_count]
-        drivers = drivers[:resource_count]
-
-        # =====================================================
-        # 6. CHECK TOTAL CAPACITY
-        # =====================================================
-
-        total_delivery_weight = sum(
-            float(delivery.weight or 0)
-            for delivery in deliveries
-        )
-
-        total_vehicle_capacity = sum(
-            float(vehicle.capacity_weight or 0)
-            for vehicle in vehicles
-        )
-
-        if total_delivery_weight > total_vehicle_capacity:
-
-            return {
-                "success": False,
-                "message": (
-                    f"Insufficient vehicle capacity. "
-                    f"Delivery weight = "
-                    f"{total_delivery_weight:.2f} kg, "
-                    f"available capacity = "
-                    f"{total_vehicle_capacity:.2f} kg."
-                ),
-                "total_delivery_weight": total_delivery_weight,
-                "total_vehicle_capacity": total_vehicle_capacity
-            }
-
-        # =====================================================
-        # 7. CHECK INDIVIDUAL DELIVERY CAPACITY
-        # =====================================================
-
-        largest_vehicle_capacity = max(
-            float(vehicle.capacity_weight or 0)
-            for vehicle in vehicles
-        )
-
-        oversized_deliveries = [
-            delivery
-            for delivery in deliveries
-            if float(delivery.weight or 0)
-            > largest_vehicle_capacity
-        ]
-
-        if oversized_deliveries:
-
-            names = ", ".join(
-                delivery.customer_name
-                for delivery in oversized_deliveries
-            )
-
-            return {
-                "success": False,
-                "message": (
-                    "Some deliveries are too heavy for "
-                    "every available vehicle."
-                ),
-                "deliveries": names,
-                "largest_vehicle_capacity": (
-                    largest_vehicle_capacity
-                )
-            }
-
-        # =====================================================
-        # 8. BUILD COORDINATE LIST
-        #
-        # Node 0 = warehouse
-        # Node 1+ = deliveries
-        # =====================================================
-
-        coordinates = [
-            (
-                warehouse.latitude,
-                warehouse.longitude
-            )
-        ]
-
-        for delivery in deliveries:
-
-            coordinates.append(
-                (
-                    delivery.latitude,
-                    delivery.longitude
-                )
-            )
-
-        # =====================================================
-        # 9. BUILD DISTANCE MATRIX
-        # =====================================================
-
-        matrix = DistanceMatrix.build_matrix(
-            coordinates
-        )
-
-        if not matrix:
-            return {
-                "success": False,
-                "message": "Unable to build distance matrix."
-            }
-
-        # =====================================================
-        # 10. EXTRACT CAPACITIES AND WEIGHTS
-        # =====================================================
-
-        vehicle_capacities = [
-            float(
-                vehicle.capacity_weight or 0
-            )
-            for vehicle in vehicles
-        ]
-
-        delivery_weights = [
-            float(
-                delivery.weight or 0
-            )
-            for delivery in deliveries
-        ]
-
-        # =====================================================
-        # 11. RUN CAPACITY-AWARE ROUTE SOLVER
-        # =====================================================
-
-        routes = RouteSolver.solve(
-            distance_matrix=matrix,
-            vehicle_capacities=vehicle_capacities,
-            delivery_weights=delivery_weights,
-            depot=0
-        )
-
-        if routes is None:
-
-            return {
-                "success": False,
-                "message": (
-                    "Unable to create feasible routes "
-                    "with the available vehicle capacities."
-                )
-            }
-
-        # =====================================================
-        # 12. SAVE ROUTES
-        # =====================================================
-
-        saved_routes = []
-
-        total_assigned = 0
-
-        now = datetime.utcnow()
-
-        for vehicle_index, route_nodes in enumerate(routes):
-
-            # Ignore unused vehicle
-            #
-            # Example:
-            # [0, 0]
-            #
-            # means this vehicle has no deliveries.
-
-            delivery_nodes = [
-                node
-                for node in route_nodes
-                if node != 0
-            ]
-
-            if not delivery_nodes:
-                continue
-
-            if vehicle_index >= len(vehicles):
-                continue
-
-            if vehicle_index >= len(drivers):
-                continue
-
-            vehicle = vehicles[vehicle_index]
-            driver = drivers[vehicle_index]
-
-            # =================================================
-            # Calculate route distance
-            # =================================================
-
-            # =================================================
-# Calculate route distance
-#
-# DistanceMatrix returns METERS.
-# Convert to KILOMETERS for the database/UI.
-# =================================================
-
-            total_distance_meters = 0
-
-            for i in range(
-                len(route_nodes) - 1
-            ):
-
-                from_node = route_nodes[i]
-                to_node = route_nodes[i + 1]
-
-                total_distance_meters += float(
-                    matrix[from_node][to_node]
-                )
-
-            total_distance = (
-                total_distance_meters / 1000
-            )
-
-            # =================================================
-            # Estimate travel time
-            #
-            # Assumption:
-            # average speed = 30 km/h
-            # =================================================
-
-            travel_minutes = (
-                total_distance / 30
-            ) * 60
-
-            stop_service_minutes = (
-                len(delivery_nodes) * 5
-            )
-
-            estimated_minutes = int(
-                round(
-                    travel_minutes
-                    + stop_service_minutes
-                )
-            )
-
-            # =================================================
-            # Create Route
+        try:
+
+            # ==========================================================
+            # 0. CLEAN PREVIOUS PLANNED OPTIMIZATION
+            # ==========================================================
             #
             # IMPORTANT:
-            # Driver and vehicle remain ASSIGNED,
-            # NOT ON_ROUTE.
             #
-            # They become ON_ROUTE only when
-            # the route is started.
-            # =================================================
-
-            db_route = Route(
-                vehicle_id=vehicle.id,
-                driver_id=driver.id,
-                warehouse_id=warehouse.id,
-                status="PLANNED",
-                total_distance_km=round(
-                    total_distance,
-                    2
-                ),
-                estimated_duration_minutes=(
-                    estimated_minutes
-                ),
-                route_date=now,
-                created_at=now,
-                updated_at=now
-            )
-
-            db.add(db_route)
-            db.flush()
-
-            # =================================================
-            # Reserve driver + vehicle
+            # Every time optimization is run, the old PLANNED routes
+            # must be removed.
             #
-            # This prevents the next optimization run
-            # from using the same resources again.
-            # =================================================
+            # Otherwise:
+            #
+            # Run 1 -> R-20 to R-24
+            # Run 2 -> R-25 to R-29
+            # Run 3 -> R-30 to R-34
+            #
+            # The Routes page then keeps growing.
+            #
+            # We ONLY remove PLANNED routes.
+            #
+            # IN_PROGRESS and COMPLETED routes are preserved.
+            # ==========================================================
 
-            driver_db = (
-                db.query(Driver)
+            print("\n========================================")
+            print("     CLEANING PREVIOUS PLANNED ROUTES")
+            print("========================================")
+
+            old_planned_routes = (
+                db.query(Route)
                 .filter(
-                    Driver.id == driver.id
+                    Route.status == "PLANNED"
                 )
-                .first()
+                .all()
             )
 
-            vehicle_db = (
-                db.query(Vehicle)
-                .filter(
-                    Vehicle.id == vehicle.id
-                )
-                .first()
+            print(
+                f"Previous planned routes found: "
+                f"{len(old_planned_routes)}"
             )
 
-            if driver_db:
-                driver_db.status = "ASSIGNED"
+            old_route_ids = [
+                route.id
+                for route in old_planned_routes
+            ]
 
-            if vehicle_db:
-                vehicle_db.status = "ASSIGNED"
+            if old_route_ids:
 
-            # =================================================
-            # Create route stops
-            # =================================================
+                # ------------------------------------------------------
+                # Find deliveries belonging to old planned routes
+                # ------------------------------------------------------
 
-            stop_order = 1
-            cumulative_distance_meters = 0
-
-            for i, node in enumerate(
-                delivery_nodes
-            ):
-
-                delivery = deliveries[
-                    node - 1
-                ]
-
-                # ---------------------------------------------
-                # Distance travelled to this stop
-                # ---------------------------------------------
-
-                previous_node = (
-                    route_nodes[
-                        route_nodes.index(node) - 1
-                    ]
-                    if route_nodes.index(node) > 0
-                    else 0
-                )
-
-                cumulative_distance_meters += float(
-                    matrix[
-                        previous_node
-                    ][node]
-                )
-
-                cumulative_distance = (
-                    cumulative_distance_meters / 1000
-                )
-
-                # ---------------------------------------------
-                # Estimated arrival
-                # ---------------------------------------------
-
-                travel_to_stop_minutes = (
-                    cumulative_distance / 30
-                ) * 60
-
-                planned_arrival = (
-                    now
-                    + timedelta(
-                        minutes=int(
-                            round(
-                                travel_to_stop_minutes
-                                + (
-                                    (stop_order - 1)
-                                    * 5
-                                )
-                            )
+                old_route_stops = (
+                    db.query(RouteStop)
+                    .filter(
+                        RouteStop.route_id.in_(
+                            old_route_ids
                         )
                     )
+                    .all()
                 )
 
-                planned_departure = (
-                    planned_arrival
-                    + timedelta(minutes=5)
+                old_delivery_ids = list(
+                    {
+                        stop.delivery_id
+                        for stop in old_route_stops
+                    }
                 )
 
-                # ---------------------------------------------
-                # Create RouteStop
-                # ---------------------------------------------
-
-                stop = RouteStop(
-                    route_id=db_route.id,
-                    delivery_id=delivery.id,
-                    stop_order=stop_order,
-                    planned_arrival_time=(
-                        planned_arrival
-                    ),
-                    planned_departure_time=(
-                        planned_departure
-                    ),
-                    actual_arrival_time=None,
-                    actual_departure_time=None,
-                    created_at=now,
-                    updated_at=now
+                print(
+                    f"Old planned route stops: "
+                    f"{len(old_route_stops)}"
                 )
 
-                db.add(stop)
+                print(
+                    f"Old assigned deliveries: "
+                    f"{len(old_delivery_ids)}"
+                )
 
-                # ---------------------------------------------
-                # Assign delivery
-                # ---------------------------------------------
+                # ------------------------------------------------------
+                # Reset deliveries
+                # ------------------------------------------------------
 
-                delivery_db = (
-                    db.query(Delivery)
-                    .filter(
-                        Delivery.id == delivery.id
+                if old_delivery_ids:
+
+                    old_deliveries = (
+                        db.query(Delivery)
+                        .filter(
+                            Delivery.id.in_(
+                                old_delivery_ids
+                            )
+                        )
+                        .all()
                     )
-                    .first()
+
+                    for delivery in old_deliveries:
+
+                        delivery.status = "PENDING"
+
+                        delivery.assigned_driver_id = None
+
+                        delivery.assigned_vehicle_id = None
+
+                        delivery.route_order = None
+
+                        delivery.estimated_arrival = None
+
+                # ------------------------------------------------------
+                # Delete old RouteStops FIRST
+                # ------------------------------------------------------
+
+                if old_route_ids:
+
+                    (
+                        db.query(RouteStop)
+                        .filter(
+                            RouteStop.route_id.in_(
+                                old_route_ids
+                            )
+                        )
+                        .delete(
+                            synchronize_session=False
+                        )
+                    )
+
+                # ------------------------------------------------------
+                # Delete old Routes
+                # ------------------------------------------------------
+
+                (
+                    db.query(Route)
+                    .filter(
+                        Route.id.in_(
+                            old_route_ids
+                        )
+                    )
+                    .delete(
+                        synchronize_session=False
+                    )
                 )
 
-                if delivery_db:
+                db.flush()
 
-                    delivery_db.status = "ASSIGNED"
+                print(
+                    "Previous planned routes removed."
+                )
 
-                    delivery_db.assigned_driver_id = (
+            else:
+
+                print(
+                    "No previous planned routes to remove."
+                )
+
+            # ==========================================================
+            # 1. FETCH PENDING DELIVERIES
+            # ==========================================================
+
+            deliveries_db = (
+                db.query(Delivery)
+                .filter(
+                    Delivery.status == "PENDING"
+                )
+                .order_by(
+                    Delivery.priority.desc(),
+                    Delivery.id.asc()
+                )
+                .all()
+            )
+
+            # ==========================================================
+            # 2. FETCH AVAILABLE VEHICLES
+            # ==========================================================
+
+            vehicles_db = (
+                db.query(Vehicle)
+                .filter(
+                    Vehicle.status == "AVAILABLE"
+                )
+                .order_by(
+                    Vehicle.id.asc()
+                )
+                .all()
+            )
+
+            # ==========================================================
+            # 3. FETCH AVAILABLE DRIVERS
+            # ==========================================================
+
+            drivers_db = (
+                db.query(Driver)
+                .filter(
+                    Driver.status == "AVAILABLE"
+                )
+                .order_by(
+                    Driver.id.asc()
+                )
+                .all()
+            )
+
+            # ==========================================================
+            # 4. FETCH WAREHOUSE
+            # ==========================================================
+
+            warehouse = (
+                db.query(Warehouse)
+                .first()
+            )
+
+            # ==========================================================
+            # 5. VALIDATION
+            # ==========================================================
+
+            if warehouse is None:
+
+                db.rollback()
+
+                return {
+                    "success": False,
+                    "message": (
+                        "No warehouse found in database."
+                    ),
+                }
+
+            if not deliveries_db:
+
+                db.rollback()
+
+                return {
+                    "success": False,
+                    "message": (
+                        "No pending deliveries found."
+                    ),
+                }
+
+            if not vehicles_db:
+
+                db.rollback()
+
+                return {
+                    "success": False,
+                    "message": (
+                        "No available vehicles found."
+                    ),
+                }
+
+            if not drivers_db:
+
+                db.rollback()
+
+                return {
+                    "success": False,
+                    "message": (
+                        "No available drivers found."
+                    ),
+                }
+
+            # ==========================================================
+            # 6. APPLY CONSTRAINT ENGINE
+            # ==========================================================
+
+            prepared_deliveries, vehicles, drivers = (
+                ConstraintEngine.prepare_data(
+                    deliveries_db,
+                    vehicles_db,
+                    drivers_db,
+                )
+            )
+
+            # ----------------------------------------------------------
+            # IMPORTANT:
+            # The optimizer must use the REAL Delivery ORM records for
+            # weights. The ConstraintEngine may return lightweight node
+            # objects, and older versions of those nodes can lose the
+            # database weight value. That causes the UI to show 0 kg and
+            # makes capacity constraints meaningless.
+            #
+            # Keep only deliveries accepted by the constraint engine,
+            # but use the original DB records for the actual optimization.
+            # ----------------------------------------------------------
+            prepared_delivery_ids = {
+                int(
+                    getattr(
+                        delivery,
+                        "id",
+                        getattr(
+                            delivery,
+                            "delivery_id",
+                            -1,
+                        ),
+                    )
+                )
+                for delivery in prepared_deliveries
+                if getattr(
+                    delivery,
+                    "id",
+                    getattr(
+                        delivery,
+                        "delivery_id",
+                        None,
+                    ),
+                ) is not None
+            }
+
+            # If the constraint layer does not expose an ID, fall back to
+            # the validated pending DB records rather than silently losing
+            # deliveries.
+            if prepared_delivery_ids:
+                deliveries = [
+                    delivery
+                    for delivery in deliveries_db
+                    if int(delivery.id)
+                    in prepared_delivery_ids
+                ]
+            else:
+                deliveries = list(deliveries_db)
+
+            if not deliveries:
+
+                db.rollback()
+
+                return {
+                    "success": False,
+                    "message": (
+                        "No valid pending deliveries available."
+                    ),
+                }
+
+            if not vehicles:
+
+                db.rollback()
+
+                return {
+                    "success": False,
+                    "message": (
+                        "No valid available vehicles available."
+                    ),
+                }
+
+            if not drivers:
+
+                db.rollback()
+
+                return {
+                    "success": False,
+                    "message": (
+                        "No valid available drivers available."
+                    ),
+                }
+
+            # ==========================================================
+            # 7. MATCH VEHICLES AND DRIVERS
+            # ==========================================================
+            #
+            # One route requires:
+            #
+            # Route
+            #   ├── Vehicle
+            #   └── Driver
+            #
+            # Therefore the number of possible routes is limited by
+            # the smaller of available vehicles and drivers.
+            # ==========================================================
+
+            resource_count = min(
+                len(vehicles),
+                len(drivers),
+            )
+
+            vehicles = vehicles[:resource_count]
+
+            drivers = drivers[:resource_count]
+
+            # ==========================================================
+            # 8. PRINT RESOURCE INFORMATION
+            # ==========================================================
+
+            print("\n========================================")
+            print("        OPTIMIZATION RESOURCES")
+            print("========================================")
+
+            print(
+                f"Pending deliveries : {len(deliveries)}"
+            )
+
+            print(
+                f"Available vehicles : {len(vehicles)}"
+            )
+
+            print(
+                f"Available drivers  : {len(drivers)}"
+            )
+
+            print("\nVEHICLES:")
+
+            for vehicle in vehicles:
+
+                print(
+                    f"  {vehicle.vehicle_number} | "
+                    f"Capacity: "
+                    f"{vehicle.capacity_weight} kg"
+                )
+
+            print("\nDRIVERS:")
+
+            for driver in drivers:
+
+                print(
+                    f"  {driver.id} | "
+                    f"{driver.name}"
+                )
+
+            # ==========================================================
+            # 9. BUILD COORDINATES
+            # ==========================================================
+            #
+            # Node 0 = Warehouse
+            #
+            # Node 1 = Delivery 1
+            # Node 2 = Delivery 2
+            # etc.
+            # ==========================================================
+
+            coordinates = [
+                (
+                    warehouse.latitude,
+                    warehouse.longitude,
+                )
+            ]
+
+            for delivery in deliveries:
+
+                coordinates.append(
+                    (
+                        delivery.latitude,
+                        delivery.longitude,
+                    )
+                )
+
+            print("\n========================================")
+            print("              COORDINATES")
+            print("========================================")
+
+            for index, coordinate in enumerate(
+                coordinates
+            ):
+
+                print(
+                    f"{index}: {coordinate}"
+                )
+
+            # ==========================================================
+            # 10. BUILD DISTANCE MATRIX
+            # ==========================================================
+
+            matrix = DistanceMatrix.build_matrix(
+                coordinates
+            )
+
+            if not matrix:
+
+                db.rollback()
+
+                return {
+                    "success": False,
+                    "message": (
+                        "Unable to build distance matrix."
+                    ),
+                }
+
+            print("\n========================================")
+            print("           DISTANCE MATRIX")
+            print("========================================")
+
+            for row in matrix:
+
+                print(row)
+
+            # ==========================================================
+            # 11. DETERMINE DISTANCE UNIT
+            # ==========================================================
+
+            maximum_distance = 0
+
+            for row in matrix:
+
+                for value in row:
+
+                    try:
+
+                        maximum_distance = max(
+                            maximum_distance,
+                            float(value),
+                        )
+
+                    except (
+                        TypeError,
+                        ValueError,
+                    ):
+
+                        pass
+
+            distance_is_meters = (
+                maximum_distance > 1000
+            )
+
+            if distance_is_meters:
+
+                print(
+                    "\nDistance matrix detected "
+                    "as METERS."
+                )
+
+            else:
+
+                print(
+                    "\nDistance matrix detected "
+                    "as KILOMETERS."
+                )
+
+            # ==========================================================
+            # 12. SOLVE ROUTES
+            # ==========================================================
+
+            routes = RouteSolver.solve(
+                distance_matrix=matrix,
+                deliveries=deliveries,
+                vehicles=vehicles,
+            )
+
+            if routes is None:
+
+                db.rollback()
+
+                return {
+                    "success": False,
+                    "message": (
+                        "Route solver failed. "
+                        "No feasible route could be created "
+                        "with the available vehicle capacities."
+                    ),
+                }
+
+            # ==========================================================
+            # 13. VALIDATE SOLVER OUTPUT
+            # ==========================================================
+            #
+            # This is an important safety check.
+            #
+            # Every delivery should occur at most once across the
+            # complete optimization result.
+            # ==========================================================
+
+            assigned_delivery_indexes = set()
+
+            duplicate_delivery_indexes = set()
+
+            for route in routes:
+
+                for node in route:
+
+                    if node == 0:
+                        continue
+
+                    delivery_index = node - 1
+
+                    if not (
+                        0 <= delivery_index
+                        < len(deliveries)
+                    ):
+                        continue
+
+                    if (
+                        delivery_index
+                        in assigned_delivery_indexes
+                    ):
+
+                        duplicate_delivery_indexes.add(
+                            delivery_index
+                        )
+
+                    assigned_delivery_indexes.add(
+                        delivery_index
+                    )
+
+            if duplicate_delivery_indexes:
+
+                print(
+                    "\nWARNING:"
+                )
+
+                print(
+                    "Duplicate delivery indexes "
+                    "detected from solver:"
+                )
+
+                print(
+                    duplicate_delivery_indexes
+                )
+
+                db.rollback()
+
+                return {
+                    "success": False,
+                    "message": (
+                        "Optimization produced duplicate "
+                        "delivery assignments. "
+                        "No routes were saved."
+                    ),
+                }
+
+            # ==========================================================
+            # 14. CHECK FOR UNASSIGNED DELIVERIES
+            # ==========================================================
+
+            unassigned_delivery_indexes = []
+
+            for index in range(
+                len(deliveries)
+            ):
+
+                if (
+                    index
+                    not in assigned_delivery_indexes
+                ):
+
+                    unassigned_delivery_indexes.append(
+                        index
+                    )
+
+            if unassigned_delivery_indexes:
+
+                print(
+                    "\nWARNING:"
+                )
+
+                print(
+                    "Unassigned deliveries:"
+                )
+
+                print(
+                    unassigned_delivery_indexes
+                )
+
+                db.rollback()
+
+                return {
+                    "success": False,
+                    "message": (
+                        "Optimization could not assign "
+                        "all pending deliveries."
+                    ),
+                }
+
+            # ==========================================================
+            # 15. PRINT OPTIMIZED ROUTES
+            # ==========================================================
+
+            print("\n========================================")
+            print("          OPTIMIZED ROUTES")
+            print("========================================")
+
+            for vehicle_index, route in enumerate(
+                routes
+            ):
+
+                if not route:
+                    continue
+
+                if vehicle_index >= len(
+                    vehicles
+                ):
+                    continue
+
+                vehicle = vehicles[
+                    vehicle_index
+                ]
+
+                assigned_weight = 0
+
+                route_delivery_ids = []
+
+                for node in route:
+
+                    if node == 0:
+                        continue
+
+                    delivery_index = node - 1
+
+                    if (
+                        0 <= delivery_index
+                        < len(deliveries)
+                    ):
+
+                        delivery = deliveries[
+                            delivery_index
+                        ]
+
+                        assigned_weight += (
+                            delivery.weight
+                        )
+
+                        route_delivery_ids.append(
+                            delivery.id
+                        )
+
+                print(
+                    f"Vehicle: "
+                    f"{vehicle.vehicle_number} | "
+                    f"Capacity: "
+                    f"{vehicle.capacity_weight} kg | "
+                    f"Assigned: "
+                    f"{assigned_weight} kg | "
+                    f"Deliveries: "
+                    f"{route_delivery_ids} | "
+                    f"Route: {route}"
+                )
+
+            # ==========================================================
+            # 16. SAVE ROUTES
+            # ==========================================================
+
+            saved_routes = []
+
+            total_assigned_deliveries = 0
+
+            total_distance_km = 0
+
+            route_start_time = datetime.utcnow()
+
+            for vehicle_index, route in enumerate(
+                routes
+            ):
+
+                # ------------------------------------------------------
+                # Ignore unused vehicles.
+                #
+                # Example:
+                #
+                # [0, 0]
+                #
+                # ------------------------------------------------------
+
+                if len(route) <= 2:
+                    continue
+
+                if vehicle_index >= len(
+                    vehicles
+                ):
+                    continue
+
+                if vehicle_index >= len(
+                    drivers
+                ):
+                    continue
+
+                vehicle = vehicles[
+                    vehicle_index
+                ]
+
+                driver = drivers[
+                    vehicle_index
+                ]
+
+                # ------------------------------------------------------
+                # Calculate route distance
+                # ------------------------------------------------------
+
+                route_distance_raw = 0
+
+                for i in range(
+                    len(route) - 1
+                ):
+
+                    from_node = route[i]
+
+                    to_node = route[i + 1]
+
+                    try:
+
+                        route_distance_raw += float(
+                            matrix[
+                                from_node
+                            ][
+                                to_node
+                            ]
+                        )
+
+                    except (
+                        IndexError,
+                        TypeError,
+                        ValueError,
+                    ):
+
+                        continue
+
+                # ------------------------------------------------------
+                # Convert to KM
+                # ------------------------------------------------------
+
+                if distance_is_meters:
+
+                    route_distance_km = (
+                        route_distance_raw / 1000
+                    )
+
+                else:
+
+                    route_distance_km = (
+                        route_distance_raw
+                    )
+
+                route_distance_km = round(
+                    route_distance_km,
+                    2,
+                )
+
+                # ------------------------------------------------------
+                # Estimate travel duration
+                # ------------------------------------------------------
+
+                average_speed_kmh = 30
+
+                travel_minutes = 0
+
+                if route_distance_km > 0:
+
+                    travel_minutes = (
+                        route_distance_km
+                        / average_speed_kmh
+                        * 60
+                    )
+
+                # ------------------------------------------------------
+                # Service time
+                # ------------------------------------------------------
+
+                delivery_stop_count = (
+                    len(route) - 2
+                )
+
+                service_minutes = (
+                    delivery_stop_count * 5
+                )
+
+                estimated_duration_minutes = round(
+                    travel_minutes
+                    + service_minutes
+                )
+
+                # ------------------------------------------------------
+                # Create Route
+                # ------------------------------------------------------
+
+                db_route = Route(
+
+                    vehicle_id=vehicle.id,
+
+                    driver_id=driver.id,
+
+                    warehouse_id=warehouse.id,
+
+                    status="PLANNED",
+
+                    total_distance_km=(
+                        route_distance_km
+                    ),
+
+                    estimated_duration_minutes=(
+                        estimated_duration_minutes
+                    ),
+
+                    route_date=(
+                        datetime.utcnow()
+                    ),
+
+                    created_at=(
+                        datetime.utcnow()
+                    ),
+
+                    updated_at=(
+                        datetime.utcnow()
+                    ),
+                )
+
+                db.add(db_route)
+
+                db.flush()
+
+                # ------------------------------------------------------
+                # Create Route Stops
+                # ------------------------------------------------------
+
+                order = 1
+
+                previous_node = 0
+
+                elapsed_minutes = 0
+
+                route_start = route_start_time
+
+                assigned_weight = 0
+
+                route_delivery_ids = set()
+
+                for node in route:
+
+                    # --------------------------------------------------
+                    # Skip warehouse
+                    # --------------------------------------------------
+
+                    if node == 0:
+                        continue
+
+                    delivery_index = node - 1
+
+                    if not (
+                        0 <= delivery_index
+                        < len(deliveries)
+                    ):
+                        continue
+
+                    delivery = deliveries[
+                        delivery_index
+                    ]
+
+                    # --------------------------------------------------
+                    # EXTRA SAFETY:
+                    # Never save the same delivery twice in one route.
+                    # --------------------------------------------------
+
+                    if delivery.id in route_delivery_ids:
+
+                        print(
+                            f"Skipping duplicate delivery "
+                            f"{delivery.id} in route "
+                            f"R-{db_route.id}"
+                        )
+
+                        continue
+
+                    route_delivery_ids.add(
+                        delivery.id
+                    )
+
+                    # --------------------------------------------------
+                    # Calculate segment distance
+                    # --------------------------------------------------
+
+                    try:
+
+                        segment_distance = float(
+                            matrix[
+                                previous_node
+                            ][
+                                node
+                            ]
+                        )
+
+                    except (
+                        IndexError,
+                        TypeError,
+                        ValueError,
+                    ):
+
+                        segment_distance = 0
+
+                    if distance_is_meters:
+
+                        segment_distance_km = (
+                            segment_distance / 1000
+                        )
+
+                    else:
+
+                        segment_distance_km = (
+                            segment_distance
+                        )
+
+                    # --------------------------------------------------
+                    # Calculate travel time
+                    # --------------------------------------------------
+
+                    segment_minutes = (
+                        segment_distance_km
+                        / average_speed_kmh
+                        * 60
+                    )
+
+                    elapsed_minutes += (
+                        segment_minutes
+                    )
+
+                    planned_arrival = (
+                        route_start
+                        + timedelta(
+                            minutes=elapsed_minutes
+                        )
+                    )
+
+                    planned_departure = (
+                        planned_arrival
+                        + timedelta(
+                            minutes=5
+                        )
+                    )
+
+                    elapsed_minutes += 5
+
+                    # --------------------------------------------------
+                    # Create RouteStop
+                    # --------------------------------------------------
+
+                    stop = RouteStop(
+
+                        route_id=db_route.id,
+
+                        delivery_id=delivery.id,
+
+                        stop_order=order,
+
+                        planned_arrival_time=(
+                            planned_arrival
+                        ),
+
+                        planned_departure_time=(
+                            planned_departure
+                        ),
+
+                        actual_arrival_time=None,
+
+                        actual_departure_time=None,
+
+                        created_at=(
+                            datetime.utcnow()
+                        ),
+
+                        updated_at=(
+                            datetime.utcnow()
+                        ),
+                    )
+
+                    db.add(stop)
+
+                    # --------------------------------------------------
+                    # Assign Delivery
+                    # --------------------------------------------------
+
+                    delivery.status = "ASSIGNED"
+
+                    delivery.assigned_driver_id = (
                         driver.id
                     )
 
-                    delivery_db.assigned_vehicle_id = (
+                    delivery.assigned_vehicle_id = (
                         vehicle.id
                     )
 
-                    delivery_db.route_order = (
-                        stop_order
+                    delivery.route_order = (
+                        order
                     )
 
-                    delivery_db.estimated_arrival = (
+                    delivery.estimated_arrival = (
                         planned_arrival
                     )
 
-                stop_order += 1
-                total_assigned += 1
+                    assigned_weight += (
+                        delivery.weight
+                    )
 
-            saved_routes.append(
-                db_route
+                    total_assigned_deliveries += 1
+
+                    order += 1
+
+                    previous_node = node
+
+                # ------------------------------------------------------
+                # Save route
+                # ------------------------------------------------------
+
+                saved_routes.append(
+                    db_route
+                )
+
+                total_distance_km += (
+                    route_distance_km
+                )
+
+                print(
+                    "\n----------------------------------------"
+                )
+
+                print(
+                    f"Route ID      : R-{db_route.id}"
+                )
+
+                print(
+                    f"Driver        : {driver.name}"
+                )
+
+                print(
+                    f"Vehicle       : "
+                    f"{vehicle.vehicle_number}"
+                )
+
+                print(
+                    f"Capacity      : "
+                    f"{vehicle.capacity_weight} kg"
+                )
+
+                print(
+                    f"Assigned Load : "
+                    f"{assigned_weight} kg"
+                )
+
+                print(
+                    f"Remaining     : "
+                    f"{vehicle.capacity_weight - assigned_weight} kg"
+                )
+
+                print(
+                    f"Distance      : "
+                    f"{route_distance_km} km"
+                )
+
+                print(
+                    f"ETA           : "
+                    f"{estimated_duration_minutes} min"
+                )
+
+                print(
+                    f"Stops         : "
+                    f"{order - 1}"
+                )
+
+                print(
+                    f"Node Route    : "
+                    f"{route}"
+                )
+
+            # ==========================================================
+            # 17. FINAL SAFETY CHECK
+            # ==========================================================
+
+            if total_assigned_deliveries != len(
+                deliveries
+            ):
+
+                print(
+                    "\nERROR:"
+                )
+
+                print(
+                    f"Expected deliveries: "
+                    f"{len(deliveries)}"
+                )
+
+                print(
+                    f"Actually assigned: "
+                    f"{total_assigned_deliveries}"
+                )
+
+                db.rollback()
+
+                return {
+                    "success": False,
+                    "message": (
+                        "Optimization was cancelled because "
+                        "not all deliveries were assigned."
+                    ),
+                }
+
+            # ==========================================================
+            # 18. COMMIT DATABASE
+            # ==========================================================
+
+            db.commit()
+
+            # ==========================================================
+            # 19. FINAL RESPONSE
+            # ==========================================================
+
+            return {
+
+                "success": True,
+
+                "message": (
+                    "Optimization completed successfully."
+                ),
+
+                "routes_created": len(
+                    saved_routes
+                ),
+
+                "deliveries_assigned": (
+                    total_assigned_deliveries
+                ),
+
+                "total_distance_km": round(
+                    total_distance_km,
+                    2,
+                ),
+
+                "warehouse_id": (
+                    warehouse.id
+                ),
+            }
+
+        except Exception as error:
+
+            # ==========================================================
+            # ROLLBACK EVERYTHING IF ANYTHING FAILS
+            # ==========================================================
+
+            db.rollback()
+
+            print("\n========================================")
+            print("       OPTIMIZATION ERROR")
+            print("========================================")
+
+            print(
+                f"{type(error).__name__}: "
+                f"{error}"
             )
 
-        # =====================================================
-        # 13. SAVE EVERYTHING
-        # =====================================================
+            import traceback
 
-        db.commit()
+            traceback.print_exc()
 
-        # =====================================================
-        # 14. RESPONSE
-        # =====================================================
-
-        return {
-            "success": True,
-            "message": (
-                "Optimization completed successfully."
-            ),
-            "routes_created": len(
-                saved_routes
-            ),
-            "deliveries_assigned": (
-                total_assigned
-            ),
-            "drivers_assigned": len(
-                saved_routes
-            ),
-            "vehicles_assigned": len(
-                saved_routes
-            ),
-            "total_delivery_weight": round(
-                total_delivery_weight,
-                2
-            ),
-            "total_vehicle_capacity": round(
-                total_vehicle_capacity,
-                2
-            ),
-            "warehouse_id": warehouse.id
-        }
+            return {
+                "success": False,
+                "message": (
+                    f"Optimization failed: "
+                    f"{str(error)}"
+                ),
+            }
