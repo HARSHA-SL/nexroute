@@ -9,7 +9,8 @@ class RouteSolver:
         distance_matrix,
         deliveries,
         vehicles,
-        depot=0
+        depot=0,
+        cost_matrix=None
     ):
         """
         Create capacity-constrained delivery routes.
@@ -69,6 +70,49 @@ class RouteSolver:
 
                 print(
                     "ERROR: Distance matrix is not square."
+                )
+
+                return None
+
+        # ==========================================================
+        # OPTIMIZATION COST MATRIX
+        # ==========================================================
+        #
+        # V1:
+        #   distance_matrix was also the optimization cost.
+        #
+        # V2:
+        #   distance_matrix is retained for physical route distance.
+        #   cost_matrix contains traffic-aware travel time.
+        #
+        # If no cost_matrix is supplied, preserve V1 behavior.
+        # ==========================================================
+
+        if cost_matrix is None:
+            cost_matrix = distance_matrix
+
+        if len(cost_matrix) != expected_nodes:
+
+            print(
+                "ERROR: Cost matrix size mismatch."
+            )
+
+            print(
+                f"Expected nodes : {expected_nodes}"
+            )
+
+            print(
+                f"Cost matrix    : {len(cost_matrix)}"
+            )
+
+            return None
+
+        for row in cost_matrix:
+
+            if len(row) != expected_nodes:
+
+                print(
+                    "ERROR: Cost matrix is not square."
                 )
 
                 return None
@@ -154,7 +198,7 @@ class RouteSolver:
         routing = pywrapcp.RoutingModel(manager)
 
         # ==========================================================
-        # DISTANCE CALLBACK
+        # TRAVEL-TIME / COST CALLBACK
         # ==========================================================
 
         def distance_callback(
@@ -172,8 +216,8 @@ class RouteSolver:
 
             try:
 
-                distance = float(
-                    distance_matrix[
+                travel_cost = float(
+                    cost_matrix[
                         from_node
                     ][
                         to_node
@@ -189,10 +233,13 @@ class RouteSolver:
                 return 0
 
             # OR-Tools requires integer costs.
-            # Preserve useful precision.
+            #
+            # V2 cost_matrix is travel time in seconds.
+            # Keeping it as seconds lets OR-Tools optimize
+            # directly for traffic-aware travel time.
             return max(
                 0,
-                int(round(distance * 100))
+                int(round(travel_cost))
             )
 
         distance_callback_index = (

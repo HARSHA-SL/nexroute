@@ -470,7 +470,11 @@ class OptimizationService:
                 )
 
             # ==========================================================
-            # 10. BUILD DISTANCE MATRIX
+            # 10. BUILD ROAD DISTANCE MATRIX
+            # ==========================================================
+            #
+            # This matrix is retained for physical route distance
+            # calculations and the total_distance_km stored in Route.
             # ==========================================================
 
             matrix = DistanceMatrix.build_matrix(
@@ -497,7 +501,50 @@ class OptimizationService:
                 print(row)
 
             # ==========================================================
-            # 11. DETERMINE DISTANCE UNIT
+            # 11. BUILD TRAFFIC-AWARE TRAVEL-TIME MATRIX
+            # ==========================================================
+            #
+            # Google Routes API returns traffic-aware travel duration.
+            # This matrix is used ONLY as the OR-Tools optimization
+            # cost. The distance matrix above remains the source for
+            # route distance.
+            #
+            # The DistanceMatrix service contains a safe fallback, so
+            # if the Google API key is missing or the API fails, the
+            # optimizer can still run using estimated travel times.
+            # ==========================================================
+
+            print("\n========================================")
+            print("       TRAFFIC-AWARE TRAVEL TIME")
+            print("========================================")
+
+            traffic_time_matrix = (
+                DistanceMatrix.build_traffic_time_matrix(
+                    coordinates
+                )
+            )
+
+            if not traffic_time_matrix:
+
+                db.rollback()
+
+                return {
+                    "success": False,
+                    "message": (
+                        "Unable to build traffic-time matrix."
+                    ),
+                }
+
+            print(
+                "\nTraffic-aware travel-time matrix:"
+            )
+
+            for row in traffic_time_matrix:
+
+                print(row)
+
+            # ==========================================================
+            # 12. DETERMINE DISTANCE UNIT
             # ==========================================================
 
             maximum_distance = 0
@@ -539,11 +586,23 @@ class OptimizationService:
                 )
 
             # ==========================================================
-            # 12. SOLVE ROUTES
+            # 13. SOLVE ROUTES USING TRAFFIC-AWARE TRAVEL TIME
+            # ==========================================================
+            #
+            # distance_matrix:
+            #     Used later to calculate physical route distance.
+            #
+            # traffic_time_matrix:
+            #     Used by OR-Tools as the optimization cost.
+            #
+            # This means the optimizer prefers routes with lower
+            # current travel time, not simply shorter straight-line
+            # distance.
             # ==========================================================
 
             routes = RouteSolver.solve(
                 distance_matrix=matrix,
+                cost_matrix=traffic_time_matrix,
                 deliveries=deliveries,
                 vehicles=vehicles,
             )
@@ -562,7 +621,7 @@ class OptimizationService:
                 }
 
             # ==========================================================
-            # 13. VALIDATE SOLVER OUTPUT
+            # 14. VALIDATE SOLVER OUTPUT
             # ==========================================================
             #
             # This is an important safety check.
@@ -630,7 +689,7 @@ class OptimizationService:
                 }
 
             # ==========================================================
-            # 14. CHECK FOR UNASSIGNED DELIVERIES
+            # 15. CHECK FOR UNASSIGNED DELIVERIES
             # ==========================================================
 
             unassigned_delivery_indexes = []
@@ -673,7 +732,7 @@ class OptimizationService:
                 }
 
             # ==========================================================
-            # 15. PRINT OPTIMIZED ROUTES
+            # 16. PRINT OPTIMIZED ROUTES
             # ==========================================================
 
             print("\n========================================")
@@ -737,7 +796,7 @@ class OptimizationService:
                 )
 
             # ==========================================================
-            # 16. SAVE ROUTES
+            # 17. SAVE ROUTES
             # ==========================================================
 
             saved_routes = []
@@ -836,20 +895,45 @@ class OptimizationService:
                 )
 
                 # ------------------------------------------------------
-                # Estimate travel duration
+                # Traffic-aware travel duration
+                # ------------------------------------------------------
+                #
+                # Use the same traffic-aware matrix that OR-Tools used
+                # for optimization. This keeps the saved ETA consistent
+                # with the optimized route.
                 # ------------------------------------------------------
 
-                average_speed_kmh = 30
+                travel_seconds = 0.0
 
-                travel_minutes = 0
+                for i in range(
+                    len(route) - 1
+                ):
 
-                if route_distance_km > 0:
+                    from_node = route[i]
 
-                    travel_minutes = (
-                        route_distance_km
-                        / average_speed_kmh
-                        * 60
-                    )
+                    to_node = route[i + 1]
+
+                    try:
+
+                        travel_seconds += float(
+                            traffic_time_matrix[
+                                from_node
+                            ][
+                                to_node
+                            ]
+                        )
+
+                    except (
+                        IndexError,
+                        TypeError,
+                        ValueError
+                    ):
+
+                        continue
+
+                travel_minutes = (
+                    travel_seconds / 60
+                )
 
                 # ------------------------------------------------------
                 # Service time
@@ -998,13 +1082,29 @@ class OptimizationService:
                         )
 
                     # --------------------------------------------------
-                    # Calculate travel time
+                    # Calculate traffic-aware travel time
                     # --------------------------------------------------
+                    # V2 uses the Google traffic-aware travel-time matrix
+                    # for ETA calculations as well as route optimization.
+                    # This replaces the old average-speed calculation.
+
+                    try:
+                        segment_travel_seconds = float(
+                            traffic_time_matrix[
+                                previous_node
+                            ][
+                                node
+                            ]
+                        )
+                    except (
+                        IndexError,
+                        TypeError,
+                        ValueError,
+                    ):
+                        segment_travel_seconds = 0
 
                     segment_minutes = (
-                        segment_distance_km
-                        / average_speed_kmh
-                        * 60
+                        segment_travel_seconds / 60
                     )
 
                     elapsed_minutes += (
@@ -1159,7 +1259,7 @@ class OptimizationService:
                 )
 
             # ==========================================================
-            # 17. FINAL SAFETY CHECK
+            # 18. FINAL SAFETY CHECK
             # ==========================================================
 
             if total_assigned_deliveries != len(
@@ -1191,13 +1291,13 @@ class OptimizationService:
                 }
 
             # ==========================================================
-            # 18. COMMIT DATABASE
+            # 19. COMMIT DATABASE
             # ==========================================================
 
             db.commit()
 
             # ==========================================================
-            # 19. FINAL RESPONSE
+            # 20. FINAL RESPONSE
             # ==========================================================
 
             return {
