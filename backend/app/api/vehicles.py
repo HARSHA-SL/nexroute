@@ -1,15 +1,25 @@
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.models.vehicle import Vehicle
-from app.schemas.vehicle import VehicleCreate, VehicleUpdate
+from app.schemas.vehicle import (
+    VehicleCreate,
+    VehicleUpdate,
+    VehicleLocationUpdate,
+)
 
 router = APIRouter(
     prefix="/vehicles",
     tags=["Vehicles"]
 )
 
+
+# ==========================================================
+# GET ALL VEHICLES
+# ==========================================================
 
 @router.get("/")
 def get_all_vehicles(
@@ -25,7 +35,9 @@ def get_all_vehicles(
 
     if search:
         query = query.filter(
-            Vehicle.vehicle_number.ilike(f"%{search}%")
+            Vehicle.vehicle_number.ilike(
+                f"%{search}%"
+            )
         )
 
     if status:
@@ -70,6 +82,11 @@ def get_all_vehicles(
             "fuel_type": vehicle.fuel_type,
             "current_latitude": vehicle.current_latitude,
             "current_longitude": vehicle.current_longitude,
+            "last_location_update": (
+                vehicle.last_location_update.isoformat()
+                if vehicle.last_location_update
+                else None
+            ),
             "status": vehicle.status
         })
 
@@ -84,6 +101,10 @@ def get_all_vehicles(
         "vehicles": response
     }
 
+
+# ==========================================================
+# GET SINGLE VEHICLE
+# ==========================================================
 
 @router.get("/{vehicle_id}")
 def get_vehicle(
@@ -116,9 +137,109 @@ def get_vehicle(
             "fuel_type": vehicle.fuel_type,
             "current_latitude": vehicle.current_latitude,
             "current_longitude": vehicle.current_longitude,
+            "last_location_update": (
+                vehicle.last_location_update.isoformat()
+                if vehicle.last_location_update
+                else None
+            ),
             "status": vehicle.status
         }
     }
+
+
+# ==========================================================
+# UPDATE VEHICLE LOCATION
+# ==========================================================
+
+@router.post("/{vehicle_id}/location")
+def update_vehicle_location(
+    vehicle_id: int,
+    location_data: VehicleLocationUpdate,
+    db: Session = Depends(get_db)
+):
+
+    # ------------------------------------------------------
+    # FIND VEHICLE
+    # ------------------------------------------------------
+
+    vehicle = (
+        db.query(Vehicle)
+        .filter(
+            Vehicle.id == vehicle_id
+        )
+        .first()
+    )
+
+    if vehicle is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Vehicle not found."
+        )
+
+    # ------------------------------------------------------
+    # VALIDATE LATITUDE
+    # ------------------------------------------------------
+
+    if not -90 <= location_data.latitude <= 90:
+        raise HTTPException(
+            status_code=400,
+            detail="Latitude must be between -90 and 90."
+        )
+
+    # ------------------------------------------------------
+    # VALIDATE LONGITUDE
+    # ------------------------------------------------------
+
+    if not -180 <= location_data.longitude <= 180:
+        raise HTTPException(
+            status_code=400,
+            detail="Longitude must be between -180 and 180."
+        )
+
+    # ------------------------------------------------------
+    # UPDATE LOCATION
+    # ------------------------------------------------------
+
+    vehicle.current_latitude = location_data.latitude
+    vehicle.current_longitude = location_data.longitude
+
+    vehicle.last_location_update = datetime.now(
+        timezone.utc
+    )
+
+    # ------------------------------------------------------
+    # SAVE TO DATABASE
+    # ------------------------------------------------------
+
+    db.commit()
+    db.refresh(vehicle)
+
+    # ------------------------------------------------------
+    # RESPONSE
+    # ------------------------------------------------------
+
+    return {
+        "success": True,
+        "message": "Vehicle location updated successfully.",
+        "vehicle": {
+            "id": vehicle.id,
+            "vehicle_number": vehicle.vehicle_number,
+            "latitude": vehicle.current_latitude,
+            "longitude": vehicle.current_longitude,
+            "last_location_update": (
+                vehicle.last_location_update.isoformat()
+                if vehicle.last_location_update
+                else None
+            ),
+            "status": vehicle.status
+        }
+    }
+
+
+# ==========================================================
+# CREATE VEHICLE
+# ==========================================================
+
 @router.post("/")
 def create_vehicle(
     vehicle_data: VehicleCreate,
@@ -128,7 +249,8 @@ def create_vehicle(
     existing_vehicle = (
         db.query(Vehicle)
         .filter(
-            Vehicle.vehicle_number == vehicle_data.vehicle_number
+            Vehicle.vehicle_number
+            == vehicle_data.vehicle_number
         )
         .first()
     )
@@ -145,7 +267,9 @@ def create_vehicle(
         capacity_weight=vehicle_data.capacity_weight,
         capacity_volume=vehicle_data.capacity_volume,
         fuel_type=vehicle_data.fuel_type,
-        status=vehicle_data.status
+        status=vehicle_data.status,
+        current_latitude=vehicle_data.current_latitude,
+        current_longitude=vehicle_data.current_longitude
     )
 
     db.add(vehicle)
@@ -162,10 +286,21 @@ def create_vehicle(
             "capacity_weight": vehicle.capacity_weight,
             "capacity_volume": vehicle.capacity_volume,
             "fuel_type": vehicle.fuel_type,
+            "current_latitude": vehicle.current_latitude,
+            "current_longitude": vehicle.current_longitude,
+            "last_location_update": (
+                vehicle.last_location_update.isoformat()
+                if vehicle.last_location_update
+                else None
+            ),
             "status": vehicle.status
         }
     }
 
+
+# ==========================================================
+# UPDATE VEHICLE
+# ==========================================================
 
 @router.patch("/{vehicle_id}")
 def update_vehicle(
@@ -191,7 +326,8 @@ def update_vehicle(
     existing_vehicle = (
         db.query(Vehicle)
         .filter(
-            Vehicle.vehicle_number == vehicle_data.vehicle_number,
+            Vehicle.vehicle_number
+            == vehicle_data.vehicle_number,
             Vehicle.id != vehicle_id
         )
         .first()
@@ -203,12 +339,37 @@ def update_vehicle(
             detail="Vehicle number already exists."
         )
 
-    vehicle.vehicle_number = vehicle_data.vehicle_number
-    vehicle.vehicle_type = vehicle_data.vehicle_type
-    vehicle.capacity_weight = vehicle_data.capacity_weight
-    vehicle.capacity_volume = vehicle_data.capacity_volume
-    vehicle.fuel_type = vehicle_data.fuel_type
-    vehicle.status = vehicle_data.status
+    vehicle.vehicle_number = (
+        vehicle_data.vehicle_number
+    )
+
+    vehicle.vehicle_type = (
+        vehicle_data.vehicle_type
+    )
+
+    vehicle.capacity_weight = (
+        vehicle_data.capacity_weight
+    )
+
+    vehicle.capacity_volume = (
+        vehicle_data.capacity_volume
+    )
+
+    vehicle.fuel_type = (
+        vehicle_data.fuel_type
+    )
+
+    vehicle.status = (
+        vehicle_data.status
+    )
+
+    vehicle.current_latitude = (
+        vehicle_data.current_latitude
+    )
+
+    vehicle.current_longitude = (
+        vehicle_data.current_longitude
+    )
 
     db.commit()
     db.refresh(vehicle)
@@ -223,10 +384,21 @@ def update_vehicle(
             "capacity_weight": vehicle.capacity_weight,
             "capacity_volume": vehicle.capacity_volume,
             "fuel_type": vehicle.fuel_type,
+            "current_latitude": vehicle.current_latitude,
+            "current_longitude": vehicle.current_longitude,
+            "last_location_update": (
+                vehicle.last_location_update.isoformat()
+                if vehicle.last_location_update
+                else None
+            ),
             "status": vehicle.status
         }
     }
 
+
+# ==========================================================
+# DELETE VEHICLE
+# ==========================================================
 
 @router.delete("/{vehicle_id}")
 def delete_vehicle(

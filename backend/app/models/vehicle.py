@@ -1,12 +1,17 @@
-from sqlalchemy import Column, Integer, String, Float
+from sqlalchemy import Column, Integer, String, Float, DateTime
 from app.db.base import Base
+
 
 class Vehicle(Base):
     __tablename__ = "vehicles"
 
     id = Column(Integer, primary_key=True)
 
-    vehicle_number = Column(String(30), unique=True)
+    vehicle_number = Column(
+        String(30),
+        unique=True,
+        nullable=False
+    )
 
     vehicle_type = Column(String(30))
 
@@ -16,9 +21,28 @@ class Vehicle(Base):
 
     fuel_type = Column(String(30))
 
-    current_latitude = Column(Float)
+    # ==========================================================
+    # CURRENT VEHICLE LOCATION
+    # ==========================================================
 
-    current_longitude = Column(Float)
+    current_latitude = Column(Float, nullable=True)
 
-    status = Column(String(30), default="AVAILABLE")
-    
+    current_longitude = Column(Float, nullable=True)
+
+    # ==========================================================
+    # LAST LOCATION UPDATE
+    # ==========================================================
+
+    last_location_update = Column(
+        DateTime(timezone=True),
+        nullable=True
+    )
+
+    # ==========================================================
+    # VEHICLE STATUS
+    # ==========================================================
+
+    status = Column(
+        String(30),
+        default="AVAILABLE"
+    )
